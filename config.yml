@@ -36,3 +36,26 @@ genesis:
         voting_period: 30s
         expedited_voting_period: 15s
         max_deposit_period: 60s
+    # Economics, draft 2. These values must also be set in the genesis file
+    # of any real network; this file only configures the local test chain.
+    staking:
+      params:
+        # At most 30 validators.
+        max_validators: 30
+        # Validators may not charge less than 5% commission.
+        min_commission_rate: "0.050000000000000000"
+    mint:
+      minter:
+        inflation: "0.020000000000000000"
+      params:
+        # A flat 2% a year: the minimum equals the maximum and the rate never
+        # moves, which turns off the usual stake-dependent sliding rate.
+        inflation_rate_change: "0.000000000000000000"
+        inflation_min: "0.020000000000000000"
+        inflation_max: "0.020000000000000000"
+        # Hard cap of 100,000,000 SNODE, in usnode. Minting stops here.
+        max_supply: "100000000000000"
+    distribution:
+      params:
+        # 2% of staking rewards goes to the community pool.
+        community_tax: "0.020000000000000000"

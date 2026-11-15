@@ -132,8 +132,10 @@ func (AppModule) ConsensusVersion() uint64 { return 1 }
 
 // BeginBlock contains the logic that is automatically triggered at the beginning of each block.
 // The begin block implementation is optional.
-func (am AppModule) BeginBlock(_ context.Context) error {
-	return nil
+func (am AppModule) BeginBlock(ctx context.Context) error {
+	// Pay the equal share of the previous block's fees and issuance. This must
+	// run after mint and before distribution; app_config.go sets that order.
+	return am.keeper.BeginBlocker(ctx)
 }
 
 // EndBlock contains the logic that is automatically triggered at the end of each block.

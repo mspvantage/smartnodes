@@ -73,7 +73,10 @@ var (
 		// The tickets account only holds escrowed payments. It needs no
 		// special rights: it must never mint, burn or stake.
 		{Account: ticketsmoduletypes.ModuleName},
-		{Account: rewardsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
+		// The rewards module holds no funds: it only directs coins from the
+		// fee collector to the distribution module. It needs no rights.
+		{Account: rewardsmoduletypes.ModuleName},
+	}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -88,6 +91,7 @@ var (
 		// Direct transfers to the tickets escrow are refused too, so its
 		// balance always matches what the module's records say it holds.
 		ticketsmoduletypes.ModuleName,
+		rewardsmoduletypes.ModuleName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}
@@ -110,6 +114,11 @@ var (
 					// NOTE: staking module is required if HistoricalEntries param > 0
 					BeginBlockers: []string{
 						minttypes.ModuleName,
+						// rewards must sit between mint and distribution: it pays
+						// the equal share out of what mint and the previous block's
+						// fees put in the fee collector, before distribution pays
+						// the remainder by stake.
+						rewardsmoduletypes.ModuleName,
 						distrtypes.ModuleName,
 						slashingtypes.ModuleName,
 						evidencetypes.ModuleName,
@@ -118,7 +127,7 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
 					EndBlockers: []string{
 						banktypes.ModuleName,
 						govtypes.ModuleName,
