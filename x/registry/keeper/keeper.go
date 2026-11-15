@@ -26,6 +26,8 @@ type Keeper struct {
 	stakingKeeper types.StakingKeeper
 	NodeSeq       collections.Sequence
 	Node          collections.Map[uint64, types.Node]
+	// NodeByPubkey maps a node public key to its node id.
+	NodeByPubkey collections.Map[string, uint64]
 }
 
 func NewKeeper(
@@ -54,6 +56,7 @@ func NewKeeper(
 		Params:        collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Node:          collections.NewMap(sb, types.NodeKey, "node", collections.Uint64Key, codec.CollValue[types.Node](cdc)),
 		NodeSeq:       collections.NewSequence(sb, types.NodeCountKey, "nodeSequence"),
+		NodeByPubkey:  collections.NewMap(sb, types.NodeByPubkeyKey, "nodeByPubkey", collections.StringKey, collections.Uint64Value),
 	}
 	schema, err := sb.Build()
 	if err != nil {

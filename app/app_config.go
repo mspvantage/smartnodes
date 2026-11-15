@@ -63,7 +63,10 @@ var (
 		{Account: stakingtypes.KeyRotationFeePoolName, Permissions: []string{authtypes.Burner}},
 		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
-		{Account: registrymoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
+		// The registry account only holds node bonds and burns slashed bond.
+		// It must never be able to mint.
+		{Account: registrymoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
+	}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -72,6 +75,9 @@ var (
 		minttypes.ModuleName,
 		stakingtypes.BondedPoolName,
 		stakingtypes.NotBondedPoolName,
+		// Direct transfers to the registry account are refused, so its balance
+		// always equals the sum of node bonds.
+		registrymoduletypes.ModuleName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}

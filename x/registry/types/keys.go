@@ -21,4 +21,7 @@ var ParamsKey = collections.NewPrefix("p_registry")
 var (
 	NodeKey      = collections.NewPrefix("node/value/")
 	NodeCountKey = collections.NewPrefix("node/count/")
+	// NodeByPubkeyKey indexes node ids by public key, so a key can be
+	// registered only once.
+	NodeByPubkeyKey = collections.NewPrefix("node/pubkey/")
 )

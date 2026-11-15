@@ -13,7 +13,8 @@ import (
 type StakingKeeper interface {
 	ConsensusAddressCodec() address.Codec
 	ValidatorByConsAddr(context.Context, sdk.ConsAddress) (stakingtypes.ValidatorI, error)
-	// Methods imported from account should be defined here
+	// BondDenom returns the staking token denom. Node bonds must use it.
+	BondDenom(ctx context.Context) (string, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.
@@ -26,7 +27,12 @@ type AuthKeeper interface {
 // BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
 	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
-	// Methods imported from bank should be defined here
+	// SendCoinsFromAccountToModule locks a bond in the registry module account.
+	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+	// SendCoinsFromModuleToAccount returns a bond after unbonding.
+	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
+	// BurnCoins destroys slashed bond held by the registry module account.
+	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.
