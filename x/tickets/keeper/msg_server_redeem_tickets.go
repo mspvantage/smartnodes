@@ -99,7 +99,7 @@ func (k msgServer) RedeemTickets(ctx context.Context, msg *types.MsgRedeemTicket
 	payout := sdk.NewCoin(key.Price.Denom, total.Sub(fee))
 	feeCoin := sdk.NewCoin(key.Price.Denom, fee)
 
-	if err := k.addAccruedFee(ctx, feeCoin); err != nil {
+	if err := k.distributeFee(ctx, feeCoin); err != nil {
 		return nil, err
 	}
 	if payout.IsPositive() {

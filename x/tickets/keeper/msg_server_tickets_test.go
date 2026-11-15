@@ -7,6 +7,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/stretchr/testify/require"
 
 	registrytypes "github.com/mspvantage/smartnodes/x/registry/types"
@@ -20,6 +21,10 @@ const (
 	// A redeemed ticket pays the node 95% and the protocol 5% by default.
 	nodeShare = ticketPrice * 95 / 100
 	feeShare  = ticketPrice * 5 / 100
+	// The fee is divided 50% stakers, 30% community pool, 20% prober fund.
+	stakerShare    = feeShare * 50 / 100
+	communityShare = feeShare * 30 / 100
+	proberShare    = feeShare * 20 / 100
 )
 
 // world is a fixture with one issuer key registered, a funded buyer and two
@@ -381,12 +386,15 @@ func TestRedeemPaysTheNodeAndTheProtocol(t *testing.T) {
 	require.NoError(t, err)
 
 	requireInt(t, 3*nodeShare, w.balance(w.opA))
-	fees, err := w.keeper.AccruedFees.Get(w.ctx, payDenom)
-	require.NoError(t, err)
-	requireInt(t, 3*feeShare, fees)
 
-	// escrow still holds the unspent ticket plus the fees
-	requireInt(t, ticketPrice+3*feeShare, w.escrow())
+	// the 5% fee is divided three ways
+	requireInt(t, 3*stakerShare, w.moduleBalance(authtypes.FeeCollectorName))
+	requireInt(t, 3*communityShare, w.moduleBalance(communityPool))
+	requireInt(t, 3*proberShare, w.proberFund(t))
+	require.Equal(t, feeShare, stakerShare+communityShare+proberShare)
+
+	// escrow still holds the unspent ticket plus the prober fund
+	requireInt(t, ticketPrice+3*proberShare, w.escrow())
 	k := w.key(t)
 	require.Equal(t, uint64(4), k.Issued)
 	require.Equal(t, uint64(3), k.Redeemed)
@@ -506,7 +514,7 @@ func TestForgedTicketsCannotExceedIssued(t *testing.T) {
 	// in total the escrow paid out exactly what was paid in, never more
 	k := w.key(t)
 	require.Equal(t, k.Issued, k.Redeemed)
-	requireInt(t, 2*feeShare, w.escrow())
+	requireInt(t, 2*proberShare, w.escrow())
 	requireInt(t, 2*nodeShare, w.balance(w.opA))
 	w.requireEscrowExact(t)
 }
@@ -528,11 +536,17 @@ func TestFeeRounding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fees, err := w.keeper.AccruedFees.Get(w.ctx, payDenom)
-	require.NoError(t, err)
-	// node payout + fee must equal the ticket value exactly, with no dust lost
-	require.True(t, w.balance(w.opA).Add(fees).Equal(pay(3*ticketPrice).Amount))
-	requireInt(t, 3*ticketPrice*333/10_000, fees)
+	// 3 tickets at 3.33% is a fee of 99,900, divided 50/30/20 with the
+	// prober fund taking whatever remains
+	stakers := w.moduleBalance(authtypes.FeeCollectorName)
+	community := w.moduleBalance(communityPool)
+	prober := w.proberFund(t)
+	requireInt(t, 3*ticketPrice*333/10_000, stakers.Add(community).Add(prober))
+	requireInt(t, 49_950, stakers)
+	requireInt(t, 29_970, community)
+	requireInt(t, 19_980, prober)
+	// node payout + every part of the fee equals the ticket value exactly
+	require.True(t, w.balance(w.opA).Add(stakers).Add(community).Add(prober).Equal(pay(3*ticketPrice).Amount))
 	w.requireEscrowExact(t)
 
 	// a zero fee pays the node everything
@@ -556,7 +570,8 @@ func TestNoCoinIsCreatedOrLost(t *testing.T) {
 	conserved := func() {
 		t.Helper()
 		w.requireEscrowExact(t)
-		sum := w.balance(w.buyer).Add(w.balance(w.opA)).Add(w.balance(w.opB)).Add(w.escrow())
+		sum := w.balance(w.buyer).Add(w.balance(w.opA)).Add(w.balance(w.opB)).Add(w.escrow()).
+			Add(w.moduleBalance(authtypes.FeeCollectorName)).Add(w.moduleBalance(communityPool))
 		require.True(t, total.Equal(sum), "coins were created or lost: started with %s, now %s", total, sum)
 	}
 
@@ -589,8 +604,8 @@ func TestNoCoinIsCreatedOrLost(t *testing.T) {
 	k := w.key(t)
 	require.Equal(t, uint64(15), k.Issued)
 	require.Equal(t, uint64(8), k.Redeemed)
-	// 7 tickets remain unspent and 8 fees are held
-	requireInt(t, 7*ticketPrice+8*feeShare, w.escrow())
+	// 7 tickets remain unspent and the prober share of 8 fees is held
+	requireInt(t, 7*ticketPrice+8*proberShare, w.escrow())
 }
 
 // TestQueueHandlesManyEntries checks that a burst of expiring purchases is

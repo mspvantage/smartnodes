@@ -30,6 +30,16 @@ type BankKeeper interface {
 	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 	// SendCoinsFromModuleToAccount pays a node, or refunds a buyer.
 	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
+	// SendCoinsFromModuleToModule passes the stakers' share of the protocol
+	// fee to the fee collector.
+	SendCoinsFromModuleToModule(ctx context.Context, senderModule, recipientModule string, amt sdk.Coins) error
+}
+
+// DistrKeeper defines what the tickets module needs from the distribution
+// module.
+type DistrKeeper interface {
+	// FundCommunityPool moves coins from sender into the community pool.
+	FundCommunityPool(ctx context.Context, amount sdk.Coins, sender sdk.AccAddress) error
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.

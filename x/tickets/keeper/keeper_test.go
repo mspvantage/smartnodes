@@ -70,6 +70,39 @@ func (m *mockBank) SendCoinsFromModuleToAccount(_ context.Context, senderModule 
 	return nil
 }
 
+func (m *mockBank) SendCoinsFromModuleToModule(_ context.Context, senderModule, recipientModule string, amt sdk.Coins) error {
+	bal := m.modules[senderModule]
+	if !bal.IsAllGTE(amt) {
+		return sdkerrors.ErrInsufficientFunds
+	}
+	m.modules[senderModule] = bal.Sub(amt...)
+	m.modules[recipientModule] = m.modules[recipientModule].Add(amt...)
+	return nil
+}
+
+// mockDistr stands in for the distribution module's community pool. Like the
+// real one, it takes the coins from the sender's account, which here is
+// always the tickets module account.
+type mockDistr struct {
+	bank *mockBank
+	// failNext makes the next call fail, to test that a failed sweep is
+	// retried and never loses track of the money.
+	failNext bool
+}
+
+const communityPool = "distribution"
+
+func (m *mockDistr) FundCommunityPool(_ context.Context, amount sdk.Coins, sender sdk.AccAddress) error {
+	if m.failNext {
+		m.failNext = false
+		return sdkerrors.ErrInvalidRequest
+	}
+	if !sender.Equals(authtypes.NewModuleAddress(types.ModuleName)) {
+		return sdkerrors.ErrUnauthorized
+	}
+	return m.bank.SendCoinsFromModuleToModule(context.Background(), types.ModuleName, communityPool, amount)
+}
+
 // mockRegistry is an in-memory node registry.
 type mockRegistry struct {
 	nodes map[uint64]registrytypes.Node
@@ -90,6 +123,7 @@ type fixture struct {
 	addressCodec address.Codec
 	bank         *mockBank
 	registry     *mockRegistry
+	distr        *mockDistr
 	authority    string
 }
 
@@ -113,6 +147,7 @@ func initFixture(t *testing.T) *fixture {
 
 	bank := newMockBank()
 	registry := &mockRegistry{nodes: map[uint64]registrytypes.Node{}}
+	distr := &mockDistr{bank: bank}
 
 	k := keeper.NewKeeper(
 		storeService,
@@ -121,6 +156,7 @@ func initFixture(t *testing.T) *fixture {
 		authority,
 		bank,
 		registry,
+		distr,
 	)
 
 	// Initialize params
@@ -135,6 +171,7 @@ func initFixture(t *testing.T) *fixture {
 		addressCodec: addressCodec,
 		bank:         bank,
 		registry:     registry,
+		distr:        distr,
 		authority:    authorityStr,
 	}
 }
@@ -144,7 +181,7 @@ func initFixture(t *testing.T) *fixture {
 func (f *fixture) nextBlocks(t *testing.T, n int) {
 	t.Helper()
 	for i := 0; i < n; i++ {
-		require.NoError(t, f.keeper.ProcessQueue(f.ctx))
+		require.NoError(t, f.keeper.EndBlocker(f.ctx))
 		f.sdkCtx = f.sdkCtx.
 			WithBlockHeight(f.sdkCtx.BlockHeight() + 1).
 			WithBlockTime(f.sdkCtx.BlockTime().Add(5 * time.Second))
@@ -185,6 +222,21 @@ func (f *fixture) balance(addr sdk.AccAddress) math.Int {
 
 func (f *fixture) escrow() math.Int {
 	return f.bank.modules[types.ModuleName].AmountOf(payDenom)
+}
+
+// moduleBalance returns what another module account holds.
+func (f *fixture) moduleBalance(name string) math.Int {
+	return f.bank.modules[name].AmountOf(payDenom)
+}
+
+// proberFund returns the recorded prober fund.
+func (f *fixture) proberFund(t *testing.T) math.Int {
+	t.Helper()
+	amount, err := f.keeper.ProberFund.Get(f.ctx, payDenom)
+	if err != nil {
+		return math.ZeroInt()
+	}
+	return amount
 }
 
 // addNode puts a node in the mock registry.

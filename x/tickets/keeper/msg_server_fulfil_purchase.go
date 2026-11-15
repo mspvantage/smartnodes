@@ -38,6 +38,13 @@ func (k msgServer) FulfilPurchase(ctx context.Context, msg *types.MsgFulfilPurch
 	if err != nil {
 		return nil, err
 	}
+	// Tickets issued after the redemption deadline could never be spent, and
+	// the key's unspent value may already have been swept. The purchase is
+	// refunded at its own deadline instead.
+	now, height, _ := blockInfo(ctx)
+	if now >= key.RedeemEnd {
+		return nil, errorsmod.Wrapf(types.ErrKeyExpired, "key %d", key.Id)
+	}
 	pubkey, err := decodeBase64(key.Pubkey)
 	if err != nil {
 		return nil, errorsmod.Wrap(types.ErrInvalidIssuerKey, "stored public key is not valid base64")
@@ -62,7 +69,6 @@ func (k msgServer) FulfilPurchase(ctx context.Context, msg *types.MsgFulfilPurch
 	if err != nil {
 		return nil, err
 	}
-	_, height, _ := blockInfo(ctx)
 
 	// Swap the refund deadline for a deletion time.
 	if err := k.Queue.Remove(ctx, collections.Join(purchase.Deadline, purchase.Id)); err != nil {

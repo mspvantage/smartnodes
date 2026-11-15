@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"cosmossdk.io/collections"
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -61,6 +62,10 @@ func (k msgServer) AddIssuerKey(ctx context.Context, msg *types.MsgAddIssuerKey)
 		RedeemEnd: msg.RedeemEnd,
 	}
 	if err := k.IssuerKey.Set(ctx, id, key); err != nil {
+		return nil, err
+	}
+	// Queue the key for the end-of-life sweep at its redemption deadline.
+	if err := k.KeyExpiry.Set(ctx, collections.Join(msg.RedeemEnd, id)); err != nil {
 		return nil, err
 	}
 

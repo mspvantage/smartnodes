@@ -36,9 +36,18 @@ type Keeper struct {
 	// Queue holds (block height, purchase id) entries: a refund deadline for
 	// an unfulfilled purchase, or a deletion time for a fulfilled one.
 	Queue collections.KeySet[collections.Pair[int64, uint64]]
-	// AccruedFees holds protocol fees per denom, kept in the module account
-	// until the distribution rules are built.
-	AccruedFees collections.Map[string, math.Int]
+	// ProberFund holds the verification module's share of protocol fees per
+	// denom. The coins stay in the tickets module account until that module
+	// exists to pay them out.
+	ProberFund collections.Map[string, math.Int]
+	// KeyExpiry queues issuer keys by redemption deadline (Unix time, key id).
+	KeyExpiry collections.KeySet[collections.Pair[int64, uint64]]
+	// SweptKeys holds issuer keys whose unspent value went to the community pool.
+	SweptKeys collections.KeySet[uint64]
+	// Clearing holds issuer keys whose spent-ticket records are being deleted.
+	Clearing collections.KeySet[uint64]
+
+	distrKeeper types.DistrKeeper
 }
 
 func NewKeeper(
@@ -49,6 +58,7 @@ func NewKeeper(
 
 	bankKeeper types.BankKeeper,
 	registryKeeper types.RegistryKeeper,
+	distrKeeper types.DistrKeeper,
 ) Keeper {
 	if _, err := addressCodec.BytesToString(authority); err != nil {
 		panic(fmt.Sprintf("invalid authority address %s: %s", authority, err))
@@ -71,7 +81,11 @@ func NewKeeper(
 		PurchaseSeq:    collections.NewSequence(sb, types.PurchaseCountKey, "purchaseSequence"),
 		Spent:          collections.NewKeySet(sb, types.SpentKey, "spent", collections.PairKeyCodec(collections.Uint64Key, collections.BytesKey)),
 		Queue:          collections.NewKeySet(sb, types.QueueKey, "queue", collections.PairKeyCodec(collections.Int64Key, collections.Uint64Key)),
-		AccruedFees:    collections.NewMap(sb, types.AccruedFeesKey, "accruedFees", collections.StringKey, sdk.IntValue),
+		ProberFund:     collections.NewMap(sb, types.ProberFundKey, "proberFund", collections.StringKey, sdk.IntValue),
+		KeyExpiry:      collections.NewKeySet(sb, types.KeyExpiryKey, "keyExpiry", collections.PairKeyCodec(collections.Int64Key, collections.Uint64Key)),
+		SweptKeys:      collections.NewKeySet(sb, types.SweptKey, "sweptKeys", collections.Uint64Key),
+		Clearing:       collections.NewKeySet(sb, types.ClearingKey, "clearing", collections.Uint64Key),
+		distrKeeper:    distrKeeper,
 	}
 	schema, err := sb.Build()
 	if err != nil {

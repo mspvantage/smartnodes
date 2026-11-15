@@ -4,19 +4,48 @@ import (
 	"context"
 
 	"cosmossdk.io/collections"
+	"cosmossdk.io/math"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/mspvantage/smartnodes/x/tickets/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.
 //
-// KNOWN GAP: the list of spent tickets and the accrued fees are not part of
-// the genesis format yet. A chain restarted from an exported genesis would
-// forget which tickets were redeemed. This must be closed before the module
-// is used on any network that upgrades by export.
+// The genesis carries everything needed to keep the module's promises across
+// a restart from an export: spent tickets (so none is paid twice), the prober
+// fund, and which issuer keys have been swept. The end-of-block queues are
+// rebuilt from those records.
 func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) error {
+	swept := make(map[uint64]bool, len(genState.SweptKeyIds))
+	for _, id := range genState.SweptKeyIds {
+		swept[id] = true
+		if err := k.SweptKeys.Set(ctx, id); err != nil {
+			return err
+		}
+		// Resume deleting its spent-ticket records, in case any remain.
+		if err := k.Clearing.Set(ctx, id); err != nil {
+			return err
+		}
+	}
 	for _, elem := range genState.IssuerKeyList {
 		if err := k.IssuerKey.Set(ctx, elem.Id, elem); err != nil {
+			return err
+		}
+		// Keys not yet swept wait for their redemption deadline.
+		if !swept[elem.Id] {
+			if err := k.KeyExpiry.Set(ctx, collections.Join(elem.RedeemEnd, elem.Id)); err != nil {
+				return err
+			}
+		}
+	}
+	for _, elem := range genState.SpentList {
+		if err := k.Spent.Set(ctx, collections.Join(elem.KeyId, elem.TicketKey)); err != nil {
+			return err
+		}
+	}
+	for _, coin := range genState.ProberFund {
+		if err := k.ProberFund.Set(ctx, coin.Denom, coin.Amount); err != nil {
 			return err
 		}
 	}
@@ -77,6 +106,30 @@ func (k Keeper) ExportGenesis(ctx context.Context) (*types.GenesisState, error) 
 	}
 
 	genesis.PurchaseCount, err = k.PurchaseSeq.Peek(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = k.Spent.Walk(ctx, nil, func(key collections.Pair[uint64, []byte]) (bool, error) {
+		genesis.SpentList = append(genesis.SpentList, types.SpentTicket{KeyId: key.K1(), TicketKey: key.K2()})
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = k.ProberFund.Walk(ctx, nil, func(denom string, amount math.Int) (bool, error) {
+		if amount.IsPositive() {
+			genesis.ProberFund = append(genesis.ProberFund, sdk.NewCoin(denom, amount))
+		}
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = k.SweptKeys.Walk(ctx, nil, func(id uint64) (bool, error) {
+		genesis.SweptKeyIds = append(genesis.SweptKeyIds, id)
+		return false, nil
+	})
 	if err != nil {
 		return nil, err
 	}

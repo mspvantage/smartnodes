@@ -3,6 +3,7 @@ syntax = "proto3";
 package smartnodes.tickets.v1;
 
 import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
 import "gogoproto/gogo.proto";
 import "smartnodes/tickets/v1/issuer_key.proto";
 import "smartnodes/tickets/v1/params.proto";
@@ -21,4 +22,25 @@ message GenesisState {
   uint64 issuer_key_count = 3;
   repeated Purchase purchase_list = 4 [(gogoproto.nullable) = false];
   uint64 purchase_count = 5;
+
+  // spent_list holds every redeemed ticket whose issuer key has not yet
+  // been cleared. Without it, a chain restarted from an export would pay
+  // the same ticket twice.
+  repeated SpentTicket spent_list = 6 [(gogoproto.nullable) = false];
+
+  // prober_fund is the share of protocol fees held for the verification
+  // module, per denom.
+  repeated cosmos.base.v1beta1.Coin prober_fund = 7 [(gogoproto.nullable) = false];
+
+  // swept_key_ids lists issuer keys whose unspent value has already been
+  // moved to the community pool.
+  repeated uint64 swept_key_ids = 8;
+}
+
+// SpentTicket records one redeemed ticket.
+message SpentTicket {
+  // key_id is the issuer key the ticket was signed under.
+  uint64 key_id = 1;
+  // ticket_key is the ticket's 32-byte public key.
+  bytes ticket_key = 2;
 }

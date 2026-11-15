@@ -25,4 +25,5 @@ var (
 	ErrNotNodeOperator   = errors.Register(ModuleName, 1114, "signer is not the operator of this node")
 	ErrNodeNotActive     = errors.Register(ModuleName, 1115, "node is not active")
 	ErrOverRedemption    = errors.Register(ModuleName, 1116, "more tickets redeemed than were issued under this key")
+	ErrInvalidGenesis    = errors.Register(ModuleName, 1117, "invalid genesis state")
 )

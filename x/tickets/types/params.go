@@ -31,6 +31,19 @@ const (
 	BasisPoints uint64 = 10_000
 )
 
+// How the protocol fee on each redeemed ticket is divided, in basis points of
+// the fee. The remainder, including any rounding dust, goes to the prober
+// fund. These are fixed in code for now; making them governance parameters is
+// a later change.
+const (
+	// FeeShareStakersBps goes to the fee collector, and from there to
+	// validators and their delegators: 50%.
+	FeeShareStakersBps uint64 = 5_000
+	// FeeShareCommunityBps goes to the community pool: 30%.
+	FeeShareCommunityBps uint64 = 3_000
+	// The prober fund receives what is left: 20%.
+)
+
 // NewParams creates a new Params instance.
 func NewParams(
 	issuanceDeadlineBlocks uint64,

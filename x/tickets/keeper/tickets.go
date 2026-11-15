@@ -11,6 +11,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/mspvantage/smartnodes/x/tickets/types"
 )
@@ -24,9 +25,17 @@ const (
 	GasPerPairingCheck uint64 = 20_000
 )
 
-// MaxQueueEntriesPerBlock bounds the end-of-block work. Anything beyond it
-// waits for the next block.
-const MaxQueueEntriesPerBlock = 200
+// Bounds on end-of-block work. Anything beyond them waits for the next block.
+const (
+	// MaxQueueEntriesPerBlock is the most refunds and purchase deletions.
+	MaxQueueEntriesPerBlock = 200
+	// MaxKeySweepsPerBlock is the most expired issuer keys swept.
+	MaxKeySweepsPerBlock = 5
+	// MaxSpentDeletesPerBlock is the most spent-ticket records deleted.
+	MaxSpentDeletesPerBlock = 500
+	// SweepRetrySeconds is how long to wait before retrying a failed sweep.
+	SweepRetrySeconds int64 = 3_600
+)
 
 // Event types and attribute keys emitted by the tickets module.
 const (
@@ -36,6 +45,8 @@ const (
 	EventTypeRedeem         = "tickets_redeem"
 	EventTypeRefund         = "tickets_refund"
 	EventTypeRefundFailed   = "tickets_refund_failed"
+	EventTypeKeySwept       = "tickets_key_swept"
+	EventTypeSweepFailed    = "tickets_key_sweep_failed"
 	AttributeKeyKeyID       = "key_id"
 	AttributeKeyPurchaseID  = "purchase_id"
 	AttributeKeyNodeID      = "node_id"
@@ -85,26 +96,59 @@ func (k Keeper) GetIssuerKey(ctx context.Context, id uint64) (types.IssuerKey, e
 	return key, nil
 }
 
-// addAccruedFee records a protocol fee that stays in the module account.
-func (k Keeper) addAccruedFee(ctx context.Context, fee sdk.Coin) error {
-	if !fee.IsPositive() {
+// moduleAddress is the tickets escrow account.
+func moduleAddress() sdk.AccAddress {
+	return authtypes.NewModuleAddress(types.ModuleName)
+}
+
+// addProberFund records coins held for the verification module. They stay in
+// the tickets module account.
+func (k Keeper) addProberFund(ctx context.Context, amount sdk.Coin) error {
+	if !amount.IsPositive() {
 		return nil
 	}
-	current, err := k.AccruedFees.Get(ctx, fee.Denom)
+	current, err := k.ProberFund.Get(ctx, amount.Denom)
 	if err != nil {
 		if !errors.Is(err, collections.ErrNotFound) {
 			return err
 		}
 		current = sdkmath.ZeroInt()
 	}
-	return k.AccruedFees.Set(ctx, fee.Denom, current.Add(fee.Amount))
+	return k.ProberFund.Set(ctx, amount.Denom, current.Add(amount.Amount))
+}
+
+// distributeFee divides a protocol fee three ways: stakers, the community
+// pool and the prober fund. The prober fund takes the remainder, so the three
+// parts always add up to the fee exactly.
+func (k Keeper) distributeFee(ctx context.Context, fee sdk.Coin) error {
+	if !fee.IsPositive() {
+		return nil
+	}
+	bp := sdkmath.NewIntFromUint64(types.BasisPoints)
+	stakers := fee.Amount.Mul(sdkmath.NewIntFromUint64(types.FeeShareStakersBps)).Quo(bp)
+	community := fee.Amount.Mul(sdkmath.NewIntFromUint64(types.FeeShareCommunityBps)).Quo(bp)
+	prober := fee.Amount.Sub(stakers).Sub(community)
+
+	if stakers.IsPositive() {
+		coins := sdk.NewCoins(sdk.NewCoin(fee.Denom, stakers))
+		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, authtypes.FeeCollectorName, coins); err != nil {
+			return err
+		}
+	}
+	if community.IsPositive() {
+		coins := sdk.NewCoins(sdk.NewCoin(fee.Denom, community))
+		if err := k.distrKeeper.FundCommunityPool(ctx, coins, moduleAddress()); err != nil {
+			return err
+		}
+	}
+	return k.addProberFund(ctx, sdk.NewCoin(fee.Denom, prober))
 }
 
 // EscrowExpected returns what the tickets module account must hold:
 //
 //	payments locked in unfulfilled purchases
-//	+ the value of tickets issued and not yet redeemed
-//	+ protocol fees accrued and not yet distributed
+//	+ the value of tickets issued and not yet redeemed, for keys not yet swept
+//	+ the prober fund
 //
 // The module account balance must equal this at all times. Tests check it
 // after every operation.
@@ -122,7 +166,12 @@ func (k Keeper) EscrowExpected(ctx context.Context) (sdk.Coins, error) {
 	}
 
 	err = k.IssuerKey.Walk(ctx, nil, func(_ uint64, key types.IssuerKey) (bool, error) {
-		if key.Issued > key.Redeemed {
+		// Once a key is swept, its unspent value has left for the community pool.
+		swept, err := k.SweptKeys.Has(ctx, key.Id)
+		if err != nil {
+			return true, err
+		}
+		if !swept && key.Issued > key.Redeemed {
 			outstanding := sdkmath.NewIntFromUint64(key.Issued - key.Redeemed)
 			total = total.Add(sdk.NewCoin(key.Price.Denom, key.Price.Amount.Mul(outstanding)))
 		}
@@ -132,7 +181,7 @@ func (k Keeper) EscrowExpected(ctx context.Context) (sdk.Coins, error) {
 		return nil, err
 	}
 
-	err = k.AccruedFees.Walk(ctx, nil, func(denom string, amount sdkmath.Int) (bool, error) {
+	err = k.ProberFund.Walk(ctx, nil, func(denom string, amount sdkmath.Int) (bool, error) {
 		if amount.IsPositive() {
 			total = total.Add(sdk.NewCoin(denom, amount))
 		}

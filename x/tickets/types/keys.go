@@ -35,7 +35,16 @@ var (
 	// QueueKey prefixes the work queue processed at the end of each block,
 	// keyed by block height and purchase id.
 	QueueKey = collections.NewPrefix("queue/")
-	// AccruedFeesKey prefixes protocol fees collected and not yet distributed,
-	// keyed by denom.
-	AccruedFeesKey = collections.NewPrefix("fees/")
+	// ProberFundKey prefixes the share of protocol fees held for the
+	// verification module, keyed by denom.
+	ProberFundKey = collections.NewPrefix("proberfund/")
+	// KeyExpiryKey prefixes the queue of issuer keys by redemption deadline,
+	// keyed by Unix time and issuer key id.
+	KeyExpiryKey = collections.NewPrefix("keyexpiry/")
+	// SweptKey prefixes the set of issuer keys whose unspent value has been
+	// moved to the community pool.
+	SweptKey = collections.NewPrefix("swept/")
+	// ClearingKey prefixes the set of issuer keys whose spent-ticket records
+	// are being deleted, a bounded number per block.
+	ClearingKey = collections.NewPrefix("clearing/")
 )
