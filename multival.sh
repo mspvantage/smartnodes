@@ -150,6 +150,8 @@ for e in ev:
   python3 - "$TMP" "$STAKES" <<'PY'
 import json, sys
 def find(o):
+    if isinstance(o, str):
+        return float(o[:-len("usnode")]) if o.endswith("usnode") and o[0].isdigit() else None
     if isinstance(o, dict):
         if o.get("denom") == "usnode" and "amount" in o: return float(o["amount"])
         for v in o.values():
