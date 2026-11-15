@@ -41,6 +41,7 @@ import (
 	registrymodulekeeper "github.com/mspvantage/smartnodes/x/registry/keeper"
 	rewardsmodulekeeper "github.com/mspvantage/smartnodes/x/rewards/keeper"
 	ticketsmodulekeeper "github.com/mspvantage/smartnodes/x/tickets/keeper"
+	verifymodulekeeper "github.com/mspvantage/smartnodes/x/verify/keeper"
 )
 
 const (
@@ -92,6 +93,7 @@ type App struct {
 	RegistryKeeper registrymodulekeeper.Keeper
 	TicketsKeeper  ticketsmodulekeeper.Keeper
 	RewardsKeeper  rewardsmodulekeeper.Keeper
+	VerifyKeeper   verifymodulekeeper.Keeper
 }
 
 func init() {
@@ -170,6 +172,7 @@ func New(
 		&app.RegistryKeeper,
 		&app.TicketsKeeper,
 		&app.RewardsKeeper,
+		&app.VerifyKeeper,
 	); err != nil {
 		panic(err)
 	}

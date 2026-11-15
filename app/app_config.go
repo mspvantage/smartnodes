@@ -55,6 +55,8 @@ import (
 	rewardsmoduletypes "github.com/mspvantage/smartnodes/x/rewards/types"
 	_ "github.com/mspvantage/smartnodes/x/tickets/module"
 	ticketsmoduletypes "github.com/mspvantage/smartnodes/x/tickets/types"
+	_ "github.com/mspvantage/smartnodes/x/verify/module"
+	verifymoduletypes "github.com/mspvantage/smartnodes/x/verify/types"
 )
 
 var (
@@ -76,7 +78,7 @@ var (
 		// The rewards module holds no funds: it only directs coins from the
 		// fee collector to the distribution module. It needs no rights.
 		{Account: rewardsmoduletypes.ModuleName},
-	}
+		{Account: verifymoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -127,14 +129,14 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, verifymoduletypes.ModuleName},
 					EndBlockers: []string{
 						banktypes.ModuleName,
 						govtypes.ModuleName,
 						stakingtypes.ModuleName,
 						feegrant.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName, verifymoduletypes.ModuleName},
 					// The following is mostly only needed when ModuleName != StoreKey name.
 					OverrideStoreKeys: []*runtimev1alpha1.StoreKeyConfig{
 						{
@@ -164,7 +166,7 @@ var (
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName, verifymoduletypes.ModuleName},
 				}),
 			},
 			{
@@ -245,6 +247,9 @@ var (
 			}, {
 				Name:   rewardsmoduletypes.ModuleName,
 				Config: appconfig.WrapAny(&rewardsmoduletypes.Module{}),
+			}, {
+				Name:   verifymoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&verifymoduletypes.Module{}),
 			}},
 	})
 )

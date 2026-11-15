@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package smartnodes.verify.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+import "smartnodes/verify/v1/params.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/verify/types";
+
+// Msg defines the Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateParams defines a (governance) operation for updating the module
+  // parameters. The authority defaults to the x/gov module account.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // RegisterProber defines the RegisterProber RPC.
+  rpc RegisterProber(MsgRegisterProber) returns (MsgRegisterProberResponse);
+
+  // DeregisterProber defines the DeregisterProber RPC.
+  rpc DeregisterProber(MsgDeregisterProber) returns (MsgDeregisterProberResponse);
+
+  // WithdrawProberBond defines the WithdrawProberBond RPC.
+  rpc WithdrawProberBond(MsgWithdrawProberBond) returns (MsgWithdrawProberBondResponse);
+
+  // CommitReports defines the CommitReports RPC.
+  rpc CommitReports(MsgCommitReports) returns (MsgCommitReportsResponse);
+
+  // RevealReport defines the RevealReport RPC.
+  rpc RevealReport(MsgRevealReport) returns (MsgRevealReportResponse);
+
+  // Unjail defines the Unjail RPC.
+  rpc Unjail(MsgUnjail) returns (MsgUnjailResponse);
+}
+// MsgUpdateParams is the Msg/UpdateParams request type.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "smartnodes/x/verify/MsgUpdateParams";
+
+  // authority is the address that controls the module (defaults to x/gov unless overwritten).
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // params defines the module parameters to update.
+
+  // NOTE: All parameters must be supplied.
+  Params params = 2 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a
+// MsgUpdateParams message.
+message MsgUpdateParamsResponse {}
+
+// MsgRegisterProber defines the MsgRegisterProber message.
+message MsgRegisterProber {
+  option (cosmos.msg.v1.signer) = "owner";
+  string owner = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 bond = 2;
+}
+
+// MsgRegisterProberResponse defines the MsgRegisterProberResponse message.
+message MsgRegisterProberResponse {}
+
+// MsgDeregisterProber defines the MsgDeregisterProber message.
+message MsgDeregisterProber {
+  option (cosmos.msg.v1.signer) = "owner";
+  string owner = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+// MsgDeregisterProberResponse defines the MsgDeregisterProberResponse message.
+message MsgDeregisterProberResponse {}
+
+// MsgWithdrawProberBond defines the MsgWithdrawProberBond message.
+message MsgWithdrawProberBond {
+  option (cosmos.msg.v1.signer) = "owner";
+  string owner = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+// MsgWithdrawProberBondResponse defines the MsgWithdrawProberBondResponse message.
+message MsgWithdrawProberBondResponse {}
+
+// MsgCommitReports defines the MsgCommitReports message.
+message MsgCommitReports {
+  option (cosmos.msg.v1.signer) = "owner";
+  string owner = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 round = 2;
+  repeated uint64 node_ids = 3;
+  repeated string hashes = 4;
+}
+
+// MsgCommitReportsResponse defines the MsgCommitReportsResponse message.
+message MsgCommitReportsResponse {}
+
+// MsgRevealReport defines the MsgRevealReport message.
+message MsgRevealReport {
+  option (cosmos.msg.v1.signer) = "owner";
+  string owner = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 round = 2;
+  uint64 node_id = 3;
+  uint64 result = 4;
+  uint64 speed_band = 5;
+  string salt = 6;
+  string proof = 7;
+}
+
+// MsgRevealReportResponse defines the MsgRevealReportResponse message.
+message MsgRevealReportResponse {}
+
+// MsgUnjail defines the MsgUnjail message.
+message MsgUnjail {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 node_id = 2;
+}
+
+// MsgUnjailResponse defines the MsgUnjailResponse message.
+message MsgUnjailResponse {}

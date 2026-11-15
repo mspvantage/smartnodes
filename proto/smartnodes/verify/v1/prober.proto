@@ -1,0 +1,15 @@
+syntax = "proto3";
+package smartnodes.verify.v1;
+
+option go_package = "github.com/mspvantage/smartnodes/x/verify/types";
+
+// Prober defines the Prober message.
+message Prober {
+  uint64 id = 1;
+  string owner = 2;
+  uint64 bond = 3;
+  uint64 status = 4;
+  int64 unbonding_end = 5;
+  uint64 accepted = 6;
+  uint64 outliers = 7;
+}

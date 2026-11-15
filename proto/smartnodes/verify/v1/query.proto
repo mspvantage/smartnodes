@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package smartnodes.verify.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "smartnodes/verify/v1/params.proto";
+import "smartnodes/verify/v1/prober.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/verify/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/params";
+  }
+
+  // ListProber Queries a list of Prober items.
+  rpc GetProber(QueryGetProberRequest) returns (QueryGetProberResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/prober/{id}";
+  }
+
+  // ListProber defines the ListProber RPC.
+  rpc ListProber(QueryAllProberRequest) returns (QueryAllProberResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/prober";
+  }
+}
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// QueryGetProberRequest defines the QueryGetProberRequest message.
+message QueryGetProberRequest {
+  uint64 id = 1;
+}
+
+// QueryGetProberResponse defines the QueryGetProberResponse message.
+message QueryGetProberResponse {
+  Prober prober = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllProberRequest defines the QueryAllProberRequest message.
+message QueryAllProberRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllProberResponse defines the QueryAllProberResponse message.
+message QueryAllProberResponse {
+  repeated Prober prober = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
