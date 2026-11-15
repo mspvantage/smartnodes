@@ -1,0 +1,17 @@
+syntax = "proto3";
+package smartnodes.registry.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/registry/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (amino.name) = "smartnodes/x/registry/Params";
+  option (gogoproto.equal) = true;
+
+  uint64 min_bond_entry = 1;
+  uint64 min_bond_exit = 2;
+  uint64 unbonding_seconds = 3;
+}

@@ -38,6 +38,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v11/modules/core/keeper"
 
 	"github.com/mspvantage/smartnodes/docs"
+	registrymodulekeeper "github.com/mspvantage/smartnodes/x/registry/keeper"
 )
 
 const (
@@ -85,7 +86,8 @@ type App struct {
 	TransferKeeper *ibctransferkeeper.Keeper
 
 	// simulation manager
-	sm *module.SimulationManager
+	sm             *module.SimulationManager
+	RegistryKeeper registrymodulekeeper.Keeper
 }
 
 func init() {
@@ -161,6 +163,7 @@ func New(
 		&app.GovKeeper,
 		&app.UpgradeKeeper,
 		&app.ConsensusParamsKeeper,
+		&app.RegistryKeeper,
 	); err != nil {
 		panic(err)
 	}

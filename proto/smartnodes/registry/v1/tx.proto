@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package smartnodes.registry.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+import "smartnodes/registry/v1/params.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/registry/types";
+
+// Msg defines the Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateParams defines a (governance) operation for updating the module
+  // parameters. The authority defaults to the x/gov module account.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // RegisterNode defines the RegisterNode RPC.
+  rpc RegisterNode(MsgRegisterNode) returns (MsgRegisterNodeResponse);
+
+  // UpdateNode defines the UpdateNode RPC.
+  rpc UpdateNode(MsgUpdateNode) returns (MsgUpdateNodeResponse);
+
+  // AddBond defines the AddBond RPC.
+  rpc AddBond(MsgAddBond) returns (MsgAddBondResponse);
+
+  // DeregisterNode defines the DeregisterNode RPC.
+  rpc DeregisterNode(MsgDeregisterNode) returns (MsgDeregisterNodeResponse);
+
+  // WithdrawBond defines the WithdrawBond RPC.
+  rpc WithdrawBond(MsgWithdrawBond) returns (MsgWithdrawBondResponse);
+}
+// MsgUpdateParams is the Msg/UpdateParams request type.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "smartnodes/x/registry/MsgUpdateParams";
+
+  // authority is the address that controls the module (defaults to x/gov unless overwritten).
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // params defines the module parameters to update.
+
+  // NOTE: All parameters must be supplied.
+  Params params = 2 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a
+// MsgUpdateParams message.
+message MsgUpdateParamsResponse {}
+
+// MsgRegisterNode defines the MsgRegisterNode message.
+message MsgRegisterNode {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string endpoint = 2;
+  string pubkey = 3;
+  uint64 tier = 4;
+  cosmos.base.v1beta1.Coin bond = 5 [(gogoproto.nullable) = false];
+}
+
+// MsgRegisterNodeResponse defines the MsgRegisterNodeResponse message.
+message MsgRegisterNodeResponse {
+  uint64 id = 1;
+}
+
+// MsgUpdateNode defines the MsgUpdateNode message.
+message MsgUpdateNode {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  string endpoint = 3;
+  string pubkey = 4;
+}
+
+// MsgUpdateNodeResponse defines the MsgUpdateNodeResponse message.
+message MsgUpdateNodeResponse {}
+
+// MsgAddBond defines the MsgAddBond message.
+message MsgAddBond {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  cosmos.base.v1beta1.Coin amount = 3 [(gogoproto.nullable) = false];
+}
+
+// MsgAddBondResponse defines the MsgAddBondResponse message.
+message MsgAddBondResponse {}
+
+// MsgDeregisterNode defines the MsgDeregisterNode message.
+message MsgDeregisterNode {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+}
+
+// MsgDeregisterNodeResponse defines the MsgDeregisterNodeResponse message.
+message MsgDeregisterNodeResponse {}
+
+// MsgWithdrawBond defines the MsgWithdrawBond message.
+message MsgWithdrawBond {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+}
+
+// MsgWithdrawBondResponse defines the MsgWithdrawBondResponse message.
+message MsgWithdrawBondResponse {}

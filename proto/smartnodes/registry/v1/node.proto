@@ -1,0 +1,20 @@
+syntax = "proto3";
+package smartnodes.registry.v1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/registry/types";
+
+// Node defines the Node message.
+message Node {
+  uint64 id = 1;
+  string operator = 2;
+  string endpoint = 3;
+  string pubkey = 4;
+  uint64 tier = 5;
+  cosmos.base.v1beta1.Coin bond = 6 [(gogoproto.nullable) = false];
+  uint64 status = 7;
+  int64 unbonding_end = 8;
+}

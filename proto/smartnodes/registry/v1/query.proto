@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package smartnodes.registry.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "smartnodes/registry/v1/node.proto";
+import "smartnodes/registry/v1/params.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/registry/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/registry/v1/params";
+  }
+
+  // ListNode Queries a list of Node items.
+  rpc GetNode(QueryGetNodeRequest) returns (QueryGetNodeResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/registry/v1/node/{id}";
+  }
+
+  // ListNode defines the ListNode RPC.
+  rpc ListNode(QueryAllNodeRequest) returns (QueryAllNodeResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/registry/v1/node";
+  }
+}
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// QueryGetNodeRequest defines the QueryGetNodeRequest message.
+message QueryGetNodeRequest {
+  uint64 id = 1;
+}
+
+// QueryGetNodeResponse defines the QueryGetNodeResponse message.
+message QueryGetNodeResponse {
+  Node node = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllNodeRequest defines the QueryAllNodeRequest message.
+message QueryAllNodeRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllNodeResponse defines the QueryAllNodeResponse message.
+message QueryAllNodeResponse {
+  repeated Node node = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
