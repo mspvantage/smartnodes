@@ -25,7 +25,6 @@ import (
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	authsims "github.com/cosmos/cosmos-sdk/x/auth/simulation"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	consensuskeeper "github.com/cosmos/cosmos-sdk/x/consensus/keeper"
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
@@ -35,8 +34,6 @@ import (
 	mintkeeper "github.com/cosmos/cosmos-sdk/x/mint/keeper"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
-	icacontrollerkeeper "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/controller/keeper"
-	icahostkeeper "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/host/keeper"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v11/modules/apps/transfer/keeper"
 	ibckeeper "github.com/cosmos/ibc-go/v11/modules/core/keeper"
 
@@ -81,14 +78,11 @@ type App struct {
 	DistrKeeper           distrkeeper.Keeper
 	GovKeeper             *govkeeper.Keeper
 	UpgradeKeeper         *upgradekeeper.Keeper
-	AuthzKeeper           authzkeeper.Keeper
 	ConsensusParamsKeeper consensuskeeper.Keeper
 
 	// ibc keepers
-	IBCKeeper           *ibckeeper.Keeper
-	ICAControllerKeeper *icacontrollerkeeper.Keeper
-	ICAHostKeeper       *icahostkeeper.Keeper
-	TransferKeeper      *ibctransferkeeper.Keeper
+	IBCKeeper      *ibckeeper.Keeper
+	TransferKeeper *ibctransferkeeper.Keeper
 
 	// simulation manager
 	sm *module.SimulationManager
@@ -166,7 +160,6 @@ func New(
 		&app.DistrKeeper,
 		&app.GovKeeper,
 		&app.UpgradeKeeper,
-		&app.AuthzKeeper,
 		&app.ConsensusParamsKeeper,
 	); err != nil {
 		panic(err)

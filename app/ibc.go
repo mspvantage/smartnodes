@@ -9,14 +9,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-	icamodule "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts"
-	icacontroller "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/controller"
-	icacontrollerkeeper "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/controller/keeper"
-	icacontrollertypes "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/controller/types"
-	icahost "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/host"
-	icahostkeeper "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/host/keeper"
-	icahosttypes "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/host/types"
-	icatypes "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/types"
 	ibctransfer "github.com/cosmos/ibc-go/v11/modules/apps/transfer"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v11/modules/apps/transfer/keeper"
 	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
@@ -37,8 +29,6 @@ func (app *App) registerIBCModules(appOpts servertypes.AppOptions) error {
 	if err := app.RegisterStores(
 		storetypes.NewKVStoreKey(ibcexported.StoreKey),
 		storetypes.NewKVStoreKey(ibctransfertypes.StoreKey),
-		storetypes.NewKVStoreKey(icahosttypes.StoreKey),
-		storetypes.NewKVStoreKey(icacontrollertypes.StoreKey),
 	); err != nil {
 		return err
 	}
@@ -65,38 +55,15 @@ func (app *App) registerIBCModules(appOpts servertypes.AppOptions) error {
 		govModuleAddr,
 	)
 
-	// Create interchain account keepers
-	app.ICAHostKeeper = icahostkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(app.GetKey(icahosttypes.StoreKey)),
-		app.IBCKeeper.ChannelKeeper, // ICS4Wrapper
-		app.AuthKeeper,
-		app.MsgServiceRouter(),
-		app.GRPCQueryRouter(),
-		govModuleAddr,
-	)
-
-	app.ICAControllerKeeper = icacontrollerkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(app.GetKey(icacontrollertypes.StoreKey)),
-		app.IBCKeeper.ChannelKeeper,
-		app.MsgServiceRouter(),
-		govModuleAddr,
-	)
-
 	// create IBC module from bottom to top of stack
 	var (
-		transferStack      porttypes.IBCModule = ibctransfer.NewIBCModule(app.TransferKeeper)
-		transferStackV2    ibcapi.IBCModule    = ibctransferv2.NewIBCModule(app.TransferKeeper)
-		icaControllerStack porttypes.IBCModule = icacontroller.NewIBCMiddleware(app.ICAControllerKeeper)
-		icaHostStack       porttypes.IBCModule = icahost.NewIBCModule(app.ICAHostKeeper)
+		transferStack   porttypes.IBCModule = ibctransfer.NewIBCModule(app.TransferKeeper)
+		transferStackV2 ibcapi.IBCModule    = ibctransferv2.NewIBCModule(app.TransferKeeper)
 	)
 
 	// create IBC v1 router, add transfer route, then set it on the keeper
 	ibcRouter := porttypes.NewRouter().
-		AddRoute(ibctransfertypes.ModuleName, transferStack).
-		AddRoute(icacontrollertypes.SubModuleName, icaControllerStack).
-		AddRoute(icahosttypes.SubModuleName, icaHostStack)
+		AddRoute(ibctransfertypes.ModuleName, transferStack)
 
 	// create IBC v2 router, add transfer route, then set it on the keeper
 	ibcv2Router := ibcapi.NewRouter().
@@ -118,7 +85,6 @@ func (app *App) registerIBCModules(appOpts servertypes.AppOptions) error {
 	if err := app.RegisterModules(
 		ibc.NewAppModule(app.IBCKeeper),
 		ibctransfer.NewAppModule(app.TransferKeeper),
-		icamodule.NewAppModule(app.ICAControllerKeeper, app.ICAHostKeeper),
 		ibctm.NewAppModule(tmLightClientModule),
 		solomachine.NewAppModule(soloLightClientModule),
 	); err != nil {
@@ -135,7 +101,6 @@ func RegisterIBC(cdc codec.Codec) map[string]appmodule.AppModule {
 	modules := map[string]appmodule.AppModule{
 		ibcexported.ModuleName:      ibc.NewAppModule(&ibckeeper.Keeper{}),
 		ibctransfertypes.ModuleName: ibctransfer.NewAppModule(&ibctransferkeeper.Keeper{}),
-		icatypes.ModuleName:         icamodule.NewAppModule(&icacontrollerkeeper.Keeper{}, &icahostkeeper.Keeper{}),
 		ibctm.ModuleName:            ibctm.NewAppModule(ibctm.NewLightClientModule(cdc, ibcclienttypes.StoreProvider{})),
 		solomachine.ModuleName:      solomachine.NewAppModule(solomachine.NewLightClientModule(cdc, ibcclienttypes.StoreProvider{})),
 	}

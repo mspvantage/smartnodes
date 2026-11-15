@@ -4,7 +4,6 @@ import (
 	runtimev1alpha1 "cosmossdk.io/api/cosmos/app/runtime/v1alpha1"
 	appv1alpha1 "cosmossdk.io/api/cosmos/app/v1alpha1"
 	authmodulev1 "cosmossdk.io/api/cosmos/auth/module/v1"
-	authzmodulev1 "cosmossdk.io/api/cosmos/authz/module/v1"
 	bankmodulev1 "cosmossdk.io/api/cosmos/bank/module/v1"
 	consensusmodulev1 "cosmossdk.io/api/cosmos/consensus/module/v1"
 	distrmodulev1 "cosmossdk.io/api/cosmos/distribution/module/v1"
@@ -25,9 +24,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	_ "github.com/cosmos/cosmos-sdk/x/auth/vesting" // import for side-effects
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
-	"github.com/cosmos/cosmos-sdk/x/authz"
-	_ "github.com/cosmos/cosmos-sdk/x/authz/module" // import for side-effects
-	_ "github.com/cosmos/cosmos-sdk/x/bank"         // import for side-effects
+	_ "github.com/cosmos/cosmos-sdk/x/bank" // import for side-effects
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	_ "github.com/cosmos/cosmos-sdk/x/consensus" // import for side-effects
 	consensustypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
@@ -50,7 +47,6 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	_ "github.com/cosmos/cosmos-sdk/x/upgrade" // import for side-effects
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
-	icatypes "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/types"
 	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
 	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
 )
@@ -65,7 +61,6 @@ var (
 		{Account: stakingtypes.KeyRotationFeePoolName, Permissions: []string{authtypes.Burner}},
 		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
-		{Account: icatypes.ModuleName},
 	}
 
 	// blocked account addresses
@@ -101,7 +96,6 @@ var (
 						slashingtypes.ModuleName,
 						evidencetypes.ModuleName,
 						stakingtypes.ModuleName,
-						authz.ModuleName,
 						epochstypes.ModuleName,
 						// ibc modules
 						ibcexported.ModuleName,
@@ -135,7 +129,6 @@ var (
 						minttypes.ModuleName,
 						genutiltypes.ModuleName,
 						evidencetypes.ModuleName,
-						authz.ModuleName,
 						feegrant.ModuleName,
 						vestingtypes.ModuleName,
 						upgradetypes.ModuleName,
@@ -143,7 +136,6 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
-						icatypes.ModuleName,
 						// chain modules
 					},
 				}),
@@ -184,10 +176,6 @@ var (
 			{
 				Name:   genutiltypes.ModuleName,
 				Config: appconfig.WrapAny(&genutilmodulev1.Module{}),
-			},
-			{
-				Name:   authz.ModuleName,
-				Config: appconfig.WrapAny(&authzmodulev1.Module{}),
 			},
 			{
 				Name:   upgradetypes.ModuleName,
