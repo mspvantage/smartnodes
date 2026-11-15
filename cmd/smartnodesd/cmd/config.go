@@ -39,8 +39,10 @@ func initAppConfig() (string, interface{}) {
 	// - if you set srvCfg.MinGasPrices non-empty, validators CAN tweak their
 	//   own app.toml to override, or use this default value.
 	//
-	// In tests, we set the min gas prices to 0.
-	// srvCfg.MinGasPrices = "0stake"
+	// SmartNodes ships a non-zero default so a new validator does not
+	// accept free transactions by accident. Each validator can still
+	// change it in app.toml; it is a node setting, not a consensus rule.
+	srvCfg.MinGasPrices = "0.025usnode"
 
 	customAppConfig := CustomAppConfig{
 		Config: *srvCfg,

@@ -153,7 +153,7 @@ var (
 				Config: appconfig.WrapAny(&authmodulev1.Module{
 					Bech32Prefix:                AccountAddressPrefix,
 					ModuleAccountPermissions:    moduleAccPerms,
-					EnableUnorderedTransactions: true,
+					EnableUnorderedTransactions: false,
 					// By default modules authority is the governance module. This is configurable with the following:
 					// Authority: "gov", // A custom module authority can be set using a module name
 					// Authority: "cosmos1cwwv22j5ca08ggdv9c2uky355k908694z577tv", // or a specific address

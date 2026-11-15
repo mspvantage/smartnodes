@@ -21,6 +21,8 @@ faucet:
 validators:
 - name: alice
   bonded: 100000000usnode
+  app:
+    minimum-gas-prices: 0.025usnode
 - name: validator1
   bonded: 200000000usnode
 - name: validator2
