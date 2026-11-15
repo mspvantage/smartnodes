@@ -59,3 +59,7 @@ genesis:
       params:
         # 2% of staking rewards goes to the community pool.
         community_tax: "0.020000000000000000"
+    verify:
+      params:
+        # Test network only: a short round so trials do not take hours.
+        round_blocks: "40"
