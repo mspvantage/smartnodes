@@ -1,0 +1,23 @@
+syntax = "proto3";
+package smartnodes.verify.v1;
+
+option go_package = "github.com/mspvantage/smartnodes/x/verify/types";
+
+// NodeRecord is what verification knows about one VPN node.
+message NodeRecord {
+  uint64 node_id = 1;
+  // verified is true if the node passed the last round it was tallied in.
+  bool verified = 2;
+  // last_round is the last round in which reports for the node were tallied.
+  uint64 last_round = 3;
+  // last_pass_round is the last round the node passed, or 0.
+  uint64 last_pass_round = 4;
+  // consecutive_fails counts failed rounds since the last pass.
+  uint64 consecutive_fails = 5;
+  // passes and fails count every decided round.
+  uint64 passes = 6;
+  uint64 fails = 7;
+  // tamper_rounds counts rounds in which every assigned prober reported
+  // tampering.
+  uint64 tamper_rounds = 8;
+}

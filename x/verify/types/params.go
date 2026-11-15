@@ -1,36 +1,47 @@
 package types
 
-// DefaultRoundBlocks represents the RoundBlocks default value.
-// TODO: Determine the default value.
-var DefaultRoundBlocks uint64 = 0
+import (
+	errorsmod "cosmossdk.io/errors"
+)
 
-// DefaultProbersPerNode represents the ProbersPerNode default value.
-// TODO: Determine the default value.
-var DefaultProbersPerNode uint64 = 0
+// Default parameter values. Every number here is a placeholder to be tuned
+// on a test network and reviewed before any network carries real value.
+var (
+	// DefaultRoundBlocks is the length of a verification round: about one
+	// hour at five-second blocks.
+	DefaultRoundBlocks uint64 = 720
+	// DefaultProbersPerNode is how many probers are assigned to each node
+	// that is probed in a round.
+	DefaultProbersPerNode uint64 = 3
+	// DefaultSampleBps is the share of nodes probed each round, in basis
+	// points. 10,000 probes every node every round; lower it as the network
+	// grows.
+	DefaultSampleBps uint64 = 10_000
+	// DefaultMinProberBond is the smallest bond a prober may post, in the
+	// base unit of the staking token: 1,000 SNODE.
+	DefaultMinProberBond uint64 = 1_000_000_000
+	// DefaultUnbondingSeconds is how long a prober's bond stays locked after
+	// it leaves: 21 days.
+	DefaultUnbondingSeconds uint64 = 21 * 24 * 60 * 60
+	// DefaultFailsBeforeJail is how many failed rounds in a row lead to
+	// jailing.
+	DefaultFailsBeforeJail uint64 = 6
+	// DefaultTamperSlashBps is the share of a node's bond burned for proven
+	// tampering, in basis points.
+	DefaultTamperSlashBps uint64 = 1_000
+	// DefaultReportOnly records results but applies no penalties.
+	DefaultReportOnly bool = true
+)
 
-// DefaultSampleBps represents the SampleBps default value.
-// TODO: Determine the default value.
-var DefaultSampleBps uint64 = 0
-
-// DefaultMinProberBond represents the MinProberBond default value.
-// TODO: Determine the default value.
-var DefaultMinProberBond uint64 = 0
-
-// DefaultUnbondingSeconds represents the UnbondingSeconds default value.
-// TODO: Determine the default value.
-var DefaultUnbondingSeconds uint64 = 0
-
-// DefaultFailsBeforeJail represents the FailsBeforeJail default value.
-// TODO: Determine the default value.
-var DefaultFailsBeforeJail uint64 = 0
-
-// DefaultTamperSlashBps represents the TamperSlashBps default value.
-// TODO: Determine the default value.
-var DefaultTamperSlashBps uint64 = 0
-
-// DefaultReportOnly represents the ReportOnly default value.
-// TODO: Determine the default value.
-var DefaultReportOnly bool = true
+const (
+	// MinRoundBlocks is the shortest round allowed. A prober needs time to
+	// probe and post a sealed report inside one round.
+	MinRoundBlocks = 5
+	// MaxRoundBlocks is the longest round allowed: about a week.
+	MaxRoundBlocks = 120_960
+	// MaxUnbondingSeconds is the longest unbonding period allowed: one year.
+	MaxUnbondingSeconds = 365 * 24 * 60 * 60
+)
 
 // NewParams creates a new Params instance.
 func NewParams(
@@ -71,85 +82,36 @@ func DefaultParams() Params {
 
 // Validate validates the set of params.
 func (p Params) Validate() error {
-	if err := validateRoundBlocks(p.RoundBlocks); err != nil {
-		return err
+	if p.RoundBlocks < MinRoundBlocks || p.RoundBlocks > MaxRoundBlocks {
+		return errorsmod.Wrapf(ErrInvalidParams, "round_blocks %d, want %d-%d", p.RoundBlocks, MinRoundBlocks, MaxRoundBlocks)
 	}
-
-	if err := validateProbersPerNode(p.ProbersPerNode); err != nil {
-		return err
+	if p.ProbersPerNode < 1 || p.ProbersPerNode > MaxProbersPerNode {
+		return errorsmod.Wrapf(ErrInvalidParams, "probers_per_node %d, want 1-%d", p.ProbersPerNode, MaxProbersPerNode)
 	}
-
-	if err := validateSampleBps(p.SampleBps); err != nil {
-		return err
+	// An even number of probers can tie. Odd numbers always give a majority
+	// to one side when every prober reports.
+	if p.ProbersPerNode%2 == 0 {
+		return errorsmod.Wrapf(ErrInvalidParams, "probers_per_node %d must be odd", p.ProbersPerNode)
 	}
-
-	if err := validateMinProberBond(p.MinProberBond); err != nil {
-		return err
+	if p.SampleBps < 1 || p.SampleBps > BpsDenominator {
+		return errorsmod.Wrapf(ErrInvalidParams, "sample_bps %d, want 1-%d", p.SampleBps, BpsDenominator)
 	}
-
-	if err := validateUnbondingSeconds(p.UnbondingSeconds); err != nil {
-		return err
+	if p.MinProberBond == 0 {
+		return errorsmod.Wrap(ErrInvalidParams, "min_prober_bond must be greater than zero")
 	}
-
-	if err := validateFailsBeforeJail(p.FailsBeforeJail); err != nil {
-		return err
+	if p.UnbondingSeconds > MaxUnbondingSeconds {
+		return errorsmod.Wrapf(ErrInvalidParams, "unbonding_seconds %d, want at most %d", p.UnbondingSeconds, MaxUnbondingSeconds)
 	}
-
-	if err := validateTamperSlashBps(p.TamperSlashBps); err != nil {
-		return err
+	if p.FailsBeforeJail == 0 {
+		return errorsmod.Wrap(ErrInvalidParams, "fails_before_jail must be greater than zero")
 	}
-
-	if err := validateReportOnly(p.ReportOnly); err != nil {
-		return err
+	if p.TamperSlashBps > BpsDenominator {
+		return errorsmod.Wrapf(ErrInvalidParams, "tamper_slash_bps %d, want at most %d", p.TamperSlashBps, BpsDenominator)
 	}
-
-	return nil
-}
-
-// validateRoundBlocks validates the RoundBlocks parameter.
-func validateRoundBlocks(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateProbersPerNode validates the ProbersPerNode parameter.
-func validateProbersPerNode(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateSampleBps validates the SampleBps parameter.
-func validateSampleBps(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateMinProberBond validates the MinProberBond parameter.
-func validateMinProberBond(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateUnbondingSeconds validates the UnbondingSeconds parameter.
-func validateUnbondingSeconds(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateFailsBeforeJail validates the FailsBeforeJail parameter.
-func validateFailsBeforeJail(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateTamperSlashBps validates the TamperSlashBps parameter.
-func validateTamperSlashBps(v uint64) error {
-	// TODO implement validation
-	return nil
-}
-
-// validateReportOnly validates the ReportOnly parameter.
-func validateReportOnly(v bool) error {
-	// TODO implement validation
+	// This version can record results but cannot yet apply penalties, so it
+	// refuses to be configured as if it could.
+	if !p.ReportOnly {
+		return errorsmod.Wrap(ErrInvalidParams, "report_only must be true: penalties are not built in this version")
+	}
 	return nil
 }

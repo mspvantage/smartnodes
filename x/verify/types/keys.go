@@ -22,3 +22,31 @@ var (
 	ProberKey      = collections.NewPrefix("prober/value/")
 	ProberCountKey = collections.NewPrefix("prober/count/")
 )
+
+// Prefixes of the collections added by hand. No prefix may be the start of
+// another.
+var (
+	// ProberByOwnerKey maps an owner address to its prober id.
+	ProberByOwnerKey = collections.NewPrefix("owner/")
+	// ActiveListKey maps a position in the active list to a prober id.
+	ActiveListKey = collections.NewPrefix("active/list/")
+	// ActiveIndexKey maps a prober id to its position in the active list.
+	ActiveIndexKey = collections.NewPrefix("active/index/")
+	// ActiveCountKey holds the length of the active list.
+	ActiveCountKey = collections.NewPrefix("active/count/")
+	// PendingJoinKey holds probers waiting to join at the next round.
+	PendingJoinKey = collections.NewPrefix("pending/join/")
+	// PendingLeaveKey holds probers waiting to leave at the next round.
+	PendingLeaveKey = collections.NewPrefix("pending/leave/")
+	// RoundNumberKey holds the current round number.
+	RoundNumberKey = collections.NewPrefix("round/number/")
+	// RoundStartKey holds the block height at which the current round began.
+	RoundStartKey = collections.NewPrefix("round/start/")
+	// RoundSeedKey maps a round number to its seed.
+	RoundSeedKey = collections.NewPrefix("round/seed/")
+	// ReportKey holds sealed and opened reports, ordered by round, then node,
+	// then prober.
+	ReportKey = collections.NewPrefix("report/")
+	// NodeRecordKey maps a node id to its verification record.
+	NodeRecordKey = collections.NewPrefix("nodeRecord/")
+)

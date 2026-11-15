@@ -78,7 +78,10 @@ var (
 		// The rewards module holds no funds: it only directs coins from the
 		// fee collector to the distribution module. It needs no rights.
 		{Account: rewardsmoduletypes.ModuleName},
-		{Account: verifymoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
+		// The verify account only holds prober bonds. It needs no special
+		// rights in this version: it must never mint or stake.
+		{Account: verifymoduletypes.ModuleName},
+	}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -94,6 +97,9 @@ var (
 		// balance always matches what the module's records say it holds.
 		ticketsmoduletypes.ModuleName,
 		rewardsmoduletypes.ModuleName,
+		// Direct transfers to the verify account are refused, so its balance
+		// always equals the sum of prober bonds.
+		verifymoduletypes.ModuleName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}

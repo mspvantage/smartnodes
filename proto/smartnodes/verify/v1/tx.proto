@@ -65,7 +65,10 @@ message MsgRegisterProber {
 }
 
 // MsgRegisterProberResponse defines the MsgRegisterProberResponse message.
-message MsgRegisterProberResponse {}
+message MsgRegisterProberResponse {
+  // id is the new prober's id.
+  uint64 id = 1;
+}
 
 // MsgDeregisterProber defines the MsgDeregisterProber message.
 message MsgDeregisterProber {

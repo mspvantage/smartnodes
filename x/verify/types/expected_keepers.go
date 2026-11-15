@@ -6,14 +6,29 @@ import (
 	"cosmossdk.io/core/address"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	registrytypes "github.com/mspvantage/smartnodes/x/registry/types"
 )
 
+// RegistryKeeper defines what the verify module needs from the node registry.
 type RegistryKeeper interface {
-	// TODO Add methods imported from registry should be defined here
+	// GetNode returns a registered node, or an error if it does not exist.
+	GetNode(ctx context.Context, id uint64) (registrytypes.Node, error)
+	// BondDenom returns the staking token denom. Prober bonds must use it.
+	BondDenom(ctx context.Context) (string, error)
 }
 
+// TicketsKeeper defines what the verify module needs from the tickets module.
+//
+// The proof-of-probe check that will use the tickets module arrives in
+// stage 2. Until then this interface names one method the tickets keeper
+// already has. It must not be left empty: the app wiring matches a
+// dependency to the one keeper that implements its interface, and an empty
+// interface is implemented by every keeper, which stops the app from
+// starting.
 type TicketsKeeper interface {
-	// TODO Add methods imported from tickets should be defined here
+	// EscrowExpected returns what the ticket escrow should hold.
+	EscrowExpected(ctx context.Context) (sdk.Coins, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.
@@ -26,7 +41,11 @@ type AuthKeeper interface {
 // BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
 	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
-	// Methods imported from bank should be defined here
+	// SendCoinsFromAccountToModule locks a prober bond in the verify module
+	// account.
+	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+	// SendCoinsFromModuleToAccount returns a bond after unbonding.
+	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.

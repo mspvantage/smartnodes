@@ -6,6 +6,7 @@ import "amino/amino.proto";
 import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
+import "smartnodes/verify/v1/node_record.proto";
 import "smartnodes/verify/v1/params.proto";
 import "smartnodes/verify/v1/prober.proto";
 
@@ -26,6 +27,21 @@ service Query {
   // ListProber defines the ListProber RPC.
   rpc ListProber(QueryAllProberRequest) returns (QueryAllProberResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/prober";
+  }
+
+  // Round returns the current verification round.
+  rpc Round(QueryRoundRequest) returns (QueryRoundResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/round";
+  }
+
+  // NodeRecord returns a node's verification record.
+  rpc NodeRecord(QueryNodeRecordRequest) returns (QueryNodeRecordResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/node_record/{node_id}";
+  }
+
+  // Assignment returns the probers assigned to a node in the current round.
+  rpc Assignment(QueryAssignmentRequest) returns (QueryAssignmentResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/assignment/{node_id}";
   }
 }
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -59,4 +75,45 @@ message QueryAllProberRequest {
 message QueryAllProberResponse {
   repeated Prober prober = 1 [(gogoproto.nullable) = false];
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryRoundRequest defines the QueryRoundRequest message.
+message QueryRoundRequest {}
+
+// QueryRoundResponse defines the QueryRoundResponse message.
+message QueryRoundResponse {
+  // round is the current round number, or 0 before the first round.
+  uint64 round = 1;
+  // start_height is the block at which the round started.
+  int64 start_height = 2;
+  // next_round_height is the block at which the next round starts.
+  int64 next_round_height = 3;
+  // seed is the round's random seed, in hex.
+  string seed = 4;
+  // active_probers is the number of probers in the active set.
+  uint64 active_probers = 5;
+}
+
+// QueryNodeRecordRequest defines the QueryNodeRecordRequest message.
+message QueryNodeRecordRequest {
+  uint64 node_id = 1;
+}
+
+// QueryNodeRecordResponse defines the QueryNodeRecordResponse message.
+message QueryNodeRecordResponse {
+  NodeRecord node_record = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAssignmentRequest defines the QueryAssignmentRequest message.
+message QueryAssignmentRequest {
+  uint64 node_id = 1;
+}
+
+// QueryAssignmentResponse defines the QueryAssignmentResponse message.
+message QueryAssignmentResponse {
+  uint64 round = 1;
+  // selected is true if the node is probed this round.
+  bool selected = 2;
+  // prober_ids are the probers assigned to the node, if it is selected.
+  repeated uint64 prober_ids = 3;
 }

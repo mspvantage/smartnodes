@@ -27,6 +27,36 @@ type Keeper struct {
 	ticketsKeeper  types.TicketsKeeper
 	ProberSeq      collections.Sequence
 	Prober         collections.Map[uint64, types.Prober]
+
+	// ProberByOwner maps an owner address to its prober id. One address may
+	// run one prober.
+	ProberByOwner collections.Map[string, uint64]
+
+	// The active set is kept as a list so that a prober can be drawn by
+	// position at a fixed cost. ActiveList maps position to prober id,
+	// ActiveIndex maps prober id to position, ActiveCount is the length.
+	// The list changes only when a round starts.
+	ActiveList  collections.Map[uint64, uint64]
+	ActiveIndex collections.Map[uint64, uint64]
+	ActiveCount collections.Item[uint64]
+	// PendingJoin and PendingLeave hold the probers that enter or leave the
+	// active set when the next round starts.
+	PendingJoin  collections.KeySet[uint64]
+	PendingLeave collections.KeySet[uint64]
+
+	// RoundNumber is the current round, RoundStart the block it began at,
+	// and RoundSeed the random seed of each recent round.
+	RoundNumber collections.Item[uint64]
+	RoundStart  collections.Item[int64]
+	RoundSeed   collections.Map[uint64, []byte]
+
+	// Reports holds sealed and opened reports until their round is tallied.
+	// The key is (round, node id then prober id as 16 bytes), so a round's
+	// reports are stored together and a node's reports sit side by side.
+	Reports collections.Map[collections.Pair[uint64, []byte], []byte]
+
+	// NodeRecord maps a node id to its verification record.
+	NodeRecord collections.Map[uint64, types.NodeRecord]
 }
 
 func NewKeeper(
@@ -57,6 +87,18 @@ func NewKeeper(
 		Params:         collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Prober:         collections.NewMap(sb, types.ProberKey, "prober", collections.Uint64Key, codec.CollValue[types.Prober](cdc)),
 		ProberSeq:      collections.NewSequence(sb, types.ProberCountKey, "proberSequence"),
+
+		ProberByOwner: collections.NewMap(sb, types.ProberByOwnerKey, "proberByOwner", collections.StringKey, collections.Uint64Value),
+		ActiveList:    collections.NewMap(sb, types.ActiveListKey, "activeList", collections.Uint64Key, collections.Uint64Value),
+		ActiveIndex:   collections.NewMap(sb, types.ActiveIndexKey, "activeIndex", collections.Uint64Key, collections.Uint64Value),
+		ActiveCount:   collections.NewItem(sb, types.ActiveCountKey, "activeCount", collections.Uint64Value),
+		PendingJoin:   collections.NewKeySet(sb, types.PendingJoinKey, "pendingJoin", collections.Uint64Key),
+		PendingLeave:  collections.NewKeySet(sb, types.PendingLeaveKey, "pendingLeave", collections.Uint64Key),
+		RoundNumber:   collections.NewItem(sb, types.RoundNumberKey, "roundNumber", collections.Uint64Value),
+		RoundStart:    collections.NewItem(sb, types.RoundStartKey, "roundStart", collections.Int64Value),
+		RoundSeed:     collections.NewMap(sb, types.RoundSeedKey, "roundSeed", collections.Uint64Key, collections.BytesValue),
+		Reports:       collections.NewMap(sb, types.ReportKey, "reports", collections.PairKeyCodec(collections.Uint64Key, collections.BytesKey), collections.BytesValue),
+		NodeRecord:    collections.NewMap(sb, types.NodeRecordKey, "nodeRecord", collections.Uint64Key, codec.CollValue[types.NodeRecord](cdc)),
 	}
 	schema, err := sb.Build()
 	if err != nil {

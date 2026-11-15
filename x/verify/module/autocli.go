@@ -29,6 +29,23 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Alias:          []string{"show-prober"},
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
+				{
+					RpcMethod: "Round",
+					Use:       "round",
+					Short:     "Shows the current verification round, its seed and when the next one starts",
+				},
+				{
+					RpcMethod:      "NodeRecord",
+					Use:            "node-record [node-id]",
+					Short:          "Shows a node's verification record",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}},
+				},
+				{
+					RpcMethod:      "Assignment",
+					Use:            "assignment [node-id]",
+					Short:          "Shows whether a node is probed this round and which probers are assigned to it",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}},
+				},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{
@@ -60,14 +77,15 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 				{
 					RpcMethod:      "CommitReports",
 					Use:            "commit-reports [round] [node-ids] [hashes]",
-					Short:          "Send a commit-reports tx",
+					Short:          "Post sealed reports for the current round: node ids as a comma-separated list, then one hash per node",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "round"}, {ProtoField: "node_ids"}, {ProtoField: "hashes", Varargs: true}},
 				},
 				{
 					RpcMethod:      "RevealReport",
-					Use:            "reveal-report [round] [node-id] [result] [speed-band] [salt] [proof]",
-					Short:          "Send a reveal-report tx",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "round"}, {ProtoField: "node_id"}, {ProtoField: "result"}, {ProtoField: "speed_band"}, {ProtoField: "salt"}, {ProtoField: "proof"}},
+					Use:            "reveal-report [round] [node-id] [result] [speed-band] [salt]",
+					Short:          "Open a sealed report from the previous round; result is 1 (pass), 2 (fail) or 3 (tamper)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "round"}, {ProtoField: "node_id"}, {ProtoField: "result"}, {ProtoField: "speed_band"}, {ProtoField: "salt"}},
+					FlagOptions:    map[string]*autocliv1.FlagOptions{"proof": {Usage: "proof of probe (not checked in this version)"}},
 				},
 				{
 					RpcMethod:      "Unjail",

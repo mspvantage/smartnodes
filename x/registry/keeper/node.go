@@ -88,6 +88,13 @@ func (k Keeper) checkBondCoin(ctx context.Context, coin sdk.Coin) error {
 	return nil
 }
 
+// BondDenom returns the staking token denom, the only coin accepted as a
+// bond. Other modules that take bonds use it so that all bonds are in the
+// same token.
+func (k Keeper) BondDenom(ctx context.Context) (string, error) {
+	return k.stakingKeeper.BondDenom(ctx)
+}
+
 // TotalBonded returns the sum of all node bonds. The registry module account
 // must always hold exactly this amount of the staking token.
 func (k Keeper) TotalBonded(ctx context.Context) (math.Int, error) {
