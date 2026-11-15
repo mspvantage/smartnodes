@@ -51,6 +51,8 @@ import (
 	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
 	_ "github.com/mspvantage/smartnodes/x/registry/module"
 	registrymoduletypes "github.com/mspvantage/smartnodes/x/registry/types"
+	_ "github.com/mspvantage/smartnodes/x/rewards/module"
+	rewardsmoduletypes "github.com/mspvantage/smartnodes/x/rewards/types"
 	_ "github.com/mspvantage/smartnodes/x/tickets/module"
 	ticketsmoduletypes "github.com/mspvantage/smartnodes/x/tickets/types"
 )
@@ -71,7 +73,7 @@ var (
 		// The tickets account only holds escrowed payments. It needs no
 		// special rights: it must never mint, burn or stake.
 		{Account: ticketsmoduletypes.ModuleName},
-	}
+		{Account: rewardsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -116,14 +118,14 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
 					EndBlockers: []string{
 						banktypes.ModuleName,
 						govtypes.ModuleName,
 						stakingtypes.ModuleName,
 						feegrant.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
 					// The following is mostly only needed when ModuleName != StoreKey name.
 					OverrideStoreKeys: []*runtimev1alpha1.StoreKeyConfig{
 						{
@@ -153,7 +155,7 @@ var (
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName},
 				}),
 			},
 			{
@@ -231,6 +233,9 @@ var (
 			}, {
 				Name:   ticketsmoduletypes.ModuleName,
 				Config: appconfig.WrapAny(&ticketsmoduletypes.Module{}),
+			}, {
+				Name:   rewardsmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&rewardsmoduletypes.Module{}),
 			}},
 	})
 )

@@ -1,0 +1,15 @@
+syntax = "proto3";
+package smartnodes.rewards.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/rewards/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (amino.name) = "smartnodes/x/rewards/Params";
+  option (gogoproto.equal) = true;
+
+  uint64 equal_share_bps = 1;
+}

@@ -39,6 +39,7 @@ import (
 
 	"github.com/mspvantage/smartnodes/docs"
 	registrymodulekeeper "github.com/mspvantage/smartnodes/x/registry/keeper"
+	rewardsmodulekeeper "github.com/mspvantage/smartnodes/x/rewards/keeper"
 	ticketsmodulekeeper "github.com/mspvantage/smartnodes/x/tickets/keeper"
 )
 
@@ -90,6 +91,7 @@ type App struct {
 	sm             *module.SimulationManager
 	RegistryKeeper registrymodulekeeper.Keeper
 	TicketsKeeper  ticketsmodulekeeper.Keeper
+	RewardsKeeper  rewardsmodulekeeper.Keeper
 }
 
 func init() {
@@ -167,6 +169,7 @@ func New(
 		&app.ConsensusParamsKeeper,
 		&app.RegistryKeeper,
 		&app.TicketsKeeper,
+		&app.RewardsKeeper,
 	); err != nil {
 		panic(err)
 	}
