@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package smartnodes.tickets.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+import "smartnodes/tickets/v1/params.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// Msg defines the Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateParams defines a (governance) operation for updating the module
+  // parameters. The authority defaults to the x/gov module account.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // AddIssuerKey defines the AddIssuerKey RPC.
+  rpc AddIssuerKey(MsgAddIssuerKey) returns (MsgAddIssuerKeyResponse);
+
+  // BuyTickets defines the BuyTickets RPC.
+  rpc BuyTickets(MsgBuyTickets) returns (MsgBuyTicketsResponse);
+
+  // FulfilPurchase defines the FulfilPurchase RPC.
+  rpc FulfilPurchase(MsgFulfilPurchase) returns (MsgFulfilPurchaseResponse);
+
+  // RedeemTickets defines the RedeemTickets RPC.
+  rpc RedeemTickets(MsgRedeemTickets) returns (MsgRedeemTicketsResponse);
+}
+// MsgUpdateParams is the Msg/UpdateParams request type.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "smartnodes/x/tickets/MsgUpdateParams";
+
+  // authority is the address that controls the module (defaults to x/gov unless overwritten).
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // params defines the module parameters to update.
+
+  // NOTE: All parameters must be supplied.
+  Params params = 2 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a
+// MsgUpdateParams message.
+message MsgUpdateParamsResponse {}
+
+// MsgAddIssuerKey defines the MsgAddIssuerKey message.
+message MsgAddIssuerKey {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string pubkey = 2;
+  cosmos.base.v1beta1.Coin price = 3 [(gogoproto.nullable) = false];
+  int64 sign_end = 4;
+  int64 redeem_end = 5;
+}
+
+// MsgAddIssuerKeyResponse defines the MsgAddIssuerKeyResponse message.
+message MsgAddIssuerKeyResponse {
+  uint64 id = 1;
+}
+
+// MsgBuyTickets defines the MsgBuyTickets message.
+message MsgBuyTickets {
+  option (cosmos.msg.v1.signer) = "buyer";
+  string buyer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 key_id = 2;
+  repeated string blinded = 3;
+}
+
+// MsgBuyTicketsResponse defines the MsgBuyTicketsResponse message.
+message MsgBuyTicketsResponse {
+  uint64 id = 1;
+}
+
+// MsgFulfilPurchase defines the MsgFulfilPurchase message.
+message MsgFulfilPurchase {
+  option (cosmos.msg.v1.signer) = "sender";
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  repeated string signatures = 3;
+}
+
+// MsgFulfilPurchaseResponse defines the MsgFulfilPurchaseResponse message.
+message MsgFulfilPurchaseResponse {}
+
+// MsgRedeemTickets defines the MsgRedeemTickets message.
+message MsgRedeemTickets {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 node_id = 2;
+  uint64 key_id = 3;
+  repeated string tickets = 4;
+}
+
+// MsgRedeemTicketsResponse defines the MsgRedeemTicketsResponse message.
+message MsgRedeemTicketsResponse {}

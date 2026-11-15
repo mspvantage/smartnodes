@@ -1,0 +1,18 @@
+syntax = "proto3";
+package smartnodes.tickets.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (amino.name) = "smartnodes/x/tickets/Params";
+  option (gogoproto.equal) = true;
+
+  uint64 issuance_deadline_blocks = 1;
+  uint64 max_batch = 2;
+  uint64 fee_bps = 3;
+  uint64 retention_blocks = 4;
+}

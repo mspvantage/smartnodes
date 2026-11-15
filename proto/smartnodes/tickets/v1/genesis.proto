@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package smartnodes.tickets.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+import "smartnodes/tickets/v1/issuer_key.proto";
+import "smartnodes/tickets/v1/params.proto";
+import "smartnodes/tickets/v1/purchase.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// GenesisState defines the tickets module's genesis state.
+message GenesisState {
+  // params defines all the parameters of the module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+  repeated IssuerKey issuer_key_list = 2 [(gogoproto.nullable) = false];
+  uint64 issuer_key_count = 3;
+  repeated Purchase purchase_list = 4 [(gogoproto.nullable) = false];
+  uint64 purchase_count = 5;
+}

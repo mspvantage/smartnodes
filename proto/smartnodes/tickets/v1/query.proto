@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package smartnodes.tickets.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "smartnodes/tickets/v1/issuer_key.proto";
+import "smartnodes/tickets/v1/params.proto";
+import "smartnodes/tickets/v1/purchase.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/params";
+  }
+
+  // ListIssuerKey Queries a list of IssuerKey items.
+  rpc GetIssuerKey(QueryGetIssuerKeyRequest) returns (QueryGetIssuerKeyResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/issuer_key/{id}";
+  }
+
+  // ListIssuerKey defines the ListIssuerKey RPC.
+  rpc ListIssuerKey(QueryAllIssuerKeyRequest) returns (QueryAllIssuerKeyResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/issuer_key";
+  }
+
+  // ListPurchase Queries a list of Purchase items.
+  rpc GetPurchase(QueryGetPurchaseRequest) returns (QueryGetPurchaseResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/purchase/{id}";
+  }
+
+  // ListPurchase defines the ListPurchase RPC.
+  rpc ListPurchase(QueryAllPurchaseRequest) returns (QueryAllPurchaseResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/purchase";
+  }
+}
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// QueryGetIssuerKeyRequest defines the QueryGetIssuerKeyRequest message.
+message QueryGetIssuerKeyRequest {
+  uint64 id = 1;
+}
+
+// QueryGetIssuerKeyResponse defines the QueryGetIssuerKeyResponse message.
+message QueryGetIssuerKeyResponse {
+  IssuerKey issuer_key = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllIssuerKeyRequest defines the QueryAllIssuerKeyRequest message.
+message QueryAllIssuerKeyRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllIssuerKeyResponse defines the QueryAllIssuerKeyResponse message.
+message QueryAllIssuerKeyResponse {
+  repeated IssuerKey issuer_key = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryGetPurchaseRequest defines the QueryGetPurchaseRequest message.
+message QueryGetPurchaseRequest {
+  uint64 id = 1;
+}
+
+// QueryGetPurchaseResponse defines the QueryGetPurchaseResponse message.
+message QueryGetPurchaseResponse {
+  Purchase purchase = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllPurchaseRequest defines the QueryAllPurchaseRequest message.
+message QueryAllPurchaseRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllPurchaseResponse defines the QueryAllPurchaseResponse message.
+message QueryAllPurchaseResponse {
+  repeated Purchase purchase = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}

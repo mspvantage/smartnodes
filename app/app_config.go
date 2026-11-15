@@ -51,6 +51,8 @@ import (
 	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
 	_ "github.com/mspvantage/smartnodes/x/registry/module"
 	registrymoduletypes "github.com/mspvantage/smartnodes/x/registry/types"
+	_ "github.com/mspvantage/smartnodes/x/tickets/module"
+	ticketsmoduletypes "github.com/mspvantage/smartnodes/x/tickets/types"
 )
 
 var (
@@ -66,7 +68,7 @@ var (
 		// The registry account only holds node bonds and burns slashed bond.
 		// It must never be able to mint.
 		{Account: registrymoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
-	}
+		{Account: ticketsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -108,14 +110,14 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
 					EndBlockers: []string{
 						banktypes.ModuleName,
 						govtypes.ModuleName,
 						stakingtypes.ModuleName,
 						feegrant.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
 					// The following is mostly only needed when ModuleName != StoreKey name.
 					OverrideStoreKeys: []*runtimev1alpha1.StoreKeyConfig{
 						{
@@ -145,7 +147,7 @@ var (
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName},
 				}),
 			},
 			{
@@ -220,6 +222,9 @@ var (
 			{
 				Name:   registrymoduletypes.ModuleName,
 				Config: appconfig.WrapAny(&registrymoduletypes.Module{}),
+			}, {
+				Name:   ticketsmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&ticketsmoduletypes.Module{}),
 			}},
 	})
 )

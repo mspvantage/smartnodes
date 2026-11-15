@@ -1,0 +1,20 @@
+syntax = "proto3";
+package smartnodes.tickets.v1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// Purchase defines the Purchase message.
+message Purchase {
+  uint64 id = 1;
+  string buyer = 2;
+  uint64 key_id = 3;
+  repeated string blinded = 4;
+  cosmos.base.v1beta1.Coin locked = 5 [(gogoproto.nullable) = false];
+  int64 deadline = 6;
+  repeated string signatures = 7;
+  int64 fulfilled_at = 8;
+}

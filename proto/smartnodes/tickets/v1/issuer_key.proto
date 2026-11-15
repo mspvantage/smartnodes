@@ -1,0 +1,18 @@
+syntax = "proto3";
+package smartnodes.tickets.v1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// IssuerKey defines the IssuerKey message.
+message IssuerKey {
+  uint64 id = 1;
+  string pubkey = 2;
+  cosmos.base.v1beta1.Coin price = 3 [(gogoproto.nullable) = false];
+  int64 sign_end = 4;
+  int64 redeem_end = 5;
+  uint64 issued = 6;
+  uint64 redeemed = 7;
+}
