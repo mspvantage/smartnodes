@@ -301,12 +301,3 @@ func TestJoinAndLeaveTogether(t *testing.T) {
 	require.Equal(t, uint64(3), count)
 	w.requireBondsExact(t)
 }
-
-func TestUnjailIsNotAvailableYet(t *testing.T) {
-	f := initFixture(t)
-	_, str := f.account(t, 1)
-	_, err := f.ms.Unjail(f.ctx, &types.MsgUnjail{Operator: str, NodeId: 1})
-	require.ErrorIs(t, err, types.ErrJailingNotAvailable)
-	_, err = f.ms.Unjail(f.ctx, &types.MsgUnjail{Operator: "bad", NodeId: 1})
-	require.Error(t, err)
-}

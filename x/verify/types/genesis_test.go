@@ -147,34 +147,37 @@ func TestParamsValidate(t *testing.T) {
 		return p
 	}
 	good := map[string]types.Params{
-		"shortest round":       change(func(p *types.Params) { p.RoundBlocks = types.MinRoundBlocks }),
-		"longest round":        change(func(p *types.Params) { p.RoundBlocks = types.MaxRoundBlocks }),
-		"one prober per node":  change(func(p *types.Params) { p.ProbersPerNode = 1 }),
-		"most probers":         change(func(p *types.Params) { p.ProbersPerNode = types.MaxProbersPerNode }),
-		"smallest sample":      change(func(p *types.Params) { p.SampleBps = 1 }),
-		"no unbonding period":  change(func(p *types.Params) { p.UnbondingSeconds = 0 }),
-		"no tamper slash":      change(func(p *types.Params) { p.TamperSlashBps = 0 }),
-		"full tamper slash":    change(func(p *types.Params) { p.TamperSlashBps = types.BpsDenominator }),
-		"one fail before jail": change(func(p *types.Params) { p.FailsBeforeJail = 1 }),
+		"shortest round":        change(func(p *types.Params) { p.RoundBlocks = types.MinRoundBlocks }),
+		"longest round":         change(func(p *types.Params) { p.RoundBlocks = types.MaxRoundBlocks }),
+		"one prober per node":   change(func(p *types.Params) { p.ProbersPerNode = 1 }),
+		"most probers":          change(func(p *types.Params) { p.ProbersPerNode = types.MaxProbersPerNode }),
+		"smallest sample":       change(func(p *types.Params) { p.SampleBps = 1 }),
+		"no unbonding period":   change(func(p *types.Params) { p.UnbondingSeconds = 0 }),
+		"no tamper slash":       change(func(p *types.Params) { p.TamperSlashBps = 0 }),
+		"full tamper slash":     change(func(p *types.Params) { p.TamperSlashBps = types.BpsDenominator }),
+		"one fail before jail":  change(func(p *types.Params) { p.FailsBeforeJail = 1 }),
+		"penalties switched on": change(func(p *types.Params) { p.ReportOnly = false }),
+		"no unjail wait":        change(func(p *types.Params) { p.UnjailWaitSeconds = 0 }),
+		"no report reward":      change(func(p *types.Params) { p.ReportReward = 0 }),
 	}
 	for name, p := range good {
 		require.NoError(t, p.Validate(), name)
 	}
 
 	bad := map[string]types.Params{
-		"round too short":        change(func(p *types.Params) { p.RoundBlocks = types.MinRoundBlocks - 1 }),
-		"round too long":         change(func(p *types.Params) { p.RoundBlocks = types.MaxRoundBlocks + 1 }),
-		"no probers per node":    change(func(p *types.Params) { p.ProbersPerNode = 0 }),
-		"even probers per node":  change(func(p *types.Params) { p.ProbersPerNode = 4 }),
-		"too many probers":       change(func(p *types.Params) { p.ProbersPerNode = types.MaxProbersPerNode + 2 }),
-		"zero sample":            change(func(p *types.Params) { p.SampleBps = 0 }),
-		"sample above 100%":      change(func(p *types.Params) { p.SampleBps = types.BpsDenominator + 1 }),
-		"zero bond":              change(func(p *types.Params) { p.MinProberBond = 0 }),
-		"unbonding over a year":  change(func(p *types.Params) { p.UnbondingSeconds = types.MaxUnbondingSeconds + 1 }),
-		"zero fails before jail": change(func(p *types.Params) { p.FailsBeforeJail = 0 }),
-		"slash above 100%":       change(func(p *types.Params) { p.TamperSlashBps = types.BpsDenominator + 1 }),
-		"penalties switched on":  change(func(p *types.Params) { p.ReportOnly = false }),
-		"everything zero":        {},
+		"round too short":         change(func(p *types.Params) { p.RoundBlocks = types.MinRoundBlocks - 1 }),
+		"round too long":          change(func(p *types.Params) { p.RoundBlocks = types.MaxRoundBlocks + 1 }),
+		"no probers per node":     change(func(p *types.Params) { p.ProbersPerNode = 0 }),
+		"even probers per node":   change(func(p *types.Params) { p.ProbersPerNode = 4 }),
+		"too many probers":        change(func(p *types.Params) { p.ProbersPerNode = types.MaxProbersPerNode + 2 }),
+		"zero sample":             change(func(p *types.Params) { p.SampleBps = 0 }),
+		"sample above 100%":       change(func(p *types.Params) { p.SampleBps = types.BpsDenominator + 1 }),
+		"zero bond":               change(func(p *types.Params) { p.MinProberBond = 0 }),
+		"unbonding over a year":   change(func(p *types.Params) { p.UnbondingSeconds = types.MaxUnbondingSeconds + 1 }),
+		"zero fails before jail":  change(func(p *types.Params) { p.FailsBeforeJail = 0 }),
+		"slash above 100%":        change(func(p *types.Params) { p.TamperSlashBps = types.BpsDenominator + 1 }),
+		"unjail wait over a year": change(func(p *types.Params) { p.UnjailWaitSeconds = types.MaxUnbondingSeconds + 1 }),
+		"everything zero":         {},
 	}
 	for name, p := range bad {
 		require.ErrorIs(t, p.Validate(), types.ErrInvalidParams, name)

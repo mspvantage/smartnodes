@@ -87,7 +87,12 @@ func (q queryServer) Assignment(ctx context.Context, req *types.QueryAssignmentR
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if !types.Selected(seed, req.NodeId, params.SampleBps) {
+	// A jailed node is not probed until its operator unjails it.
+	jailed, err := q.k.isJailed(ctx, req.NodeId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if jailed || !types.Selected(seed, req.NodeId, params.SampleBps) {
 		return res, nil
 	}
 	res.Selected = true

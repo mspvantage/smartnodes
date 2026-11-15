@@ -144,6 +144,38 @@ func (k Keeper) distributeFee(ctx context.Context, fee sdk.Coin) error {
 	return k.addProberFund(ctx, sdk.NewCoin(fee.Denom, prober))
 }
 
+// PayFromProberFund pays a prober out of the prober fund. It pays the
+// smaller of the amount asked for and what the fund holds in that coin, and
+// returns what was paid, which may be zero. The fund's record and the escrow
+// account move together, so the escrow always matches the module's records.
+func (k Keeper) PayFromProberFund(ctx context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error) {
+	zero := sdk.NewCoin(want.Denom, sdkmath.ZeroInt())
+	if err := want.Validate(); err != nil {
+		return zero, err
+	}
+	if !want.IsPositive() {
+		return zero, nil
+	}
+	fund, err := k.ProberFund.Get(ctx, want.Denom)
+	if err != nil {
+		if errors.Is(err, collections.ErrNotFound) {
+			return zero, nil
+		}
+		return zero, err
+	}
+	pay := sdk.NewCoin(want.Denom, sdkmath.MinInt(want.Amount, fund))
+	if !pay.IsPositive() {
+		return zero, nil
+	}
+	if err := k.ProberFund.Set(ctx, want.Denom, fund.Sub(pay.Amount)); err != nil {
+		return zero, err
+	}
+	if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, recipient, sdk.NewCoins(pay)); err != nil {
+		return zero, err
+	}
+	return pay, nil
+}
+
 // EscrowExpected returns what the tickets module account must hold:
 //
 //	payments locked in unfulfilled purchases

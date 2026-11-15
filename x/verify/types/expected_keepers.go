@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"cosmossdk.io/core/address"
+	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -16,19 +17,21 @@ type RegistryKeeper interface {
 	GetNode(ctx context.Context, id uint64) (registrytypes.Node, error)
 	// BondDenom returns the staking token denom. Prober bonds must use it.
 	BondDenom(ctx context.Context) (string, error)
+	// SlashNode burns up to amount from a node's bond and returns what was
+	// burned.
+	SlashNode(ctx context.Context, id uint64, amount math.Int) (math.Int, error)
 }
 
 // TicketsKeeper defines what the verify module needs from the tickets module.
 //
-// The proof-of-probe check that will use the tickets module arrives in
-// stage 2. Until then this interface names one method the tickets keeper
-// already has. It must not be left empty: the app wiring matches a
+// This interface must never be left empty: the app wiring matches a
 // dependency to the one keeper that implements its interface, and an empty
 // interface is implemented by every keeper, which stops the app from
 // starting.
 type TicketsKeeper interface {
-	// EscrowExpected returns what the ticket escrow should hold.
-	EscrowExpected(ctx context.Context) (sdk.Coins, error)
+	// PayFromProberFund pays a prober from the prober fund, up to what the
+	// fund holds, and returns what was paid.
+	PayFromProberFund(ctx context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.

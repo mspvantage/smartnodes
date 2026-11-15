@@ -29,8 +29,15 @@ var (
 	// DefaultTamperSlashBps is the share of a node's bond burned for proven
 	// tampering, in basis points.
 	DefaultTamperSlashBps uint64 = 1_000
-	// DefaultReportOnly records results but applies no penalties.
+	// DefaultReportOnly records results but applies no penalties. Networks
+	// start this way so thresholds can be tuned before anyone loses money.
 	DefaultReportOnly bool = true
+	// DefaultUnjailWaitSeconds is how long a jailed node waits before its
+	// operator may unjail it: ten minutes.
+	DefaultUnjailWaitSeconds uint64 = 600
+	// DefaultReportReward is paid per accepted report, in the base unit of
+	// the staking token: 0.01 SNODE.
+	DefaultReportReward uint64 = 10_000
 )
 
 const (
@@ -53,6 +60,8 @@ func NewParams(
 	failsBeforeJail uint64,
 	tamperSlashBps uint64,
 	reportOnly bool,
+	unjailWaitSeconds uint64,
+	reportReward uint64,
 ) Params {
 	return Params{
 		RoundBlocks:      roundBlocks,
@@ -63,6 +72,9 @@ func NewParams(
 		FailsBeforeJail:  failsBeforeJail,
 		TamperSlashBps:   tamperSlashBps,
 		ReportOnly:       reportOnly,
+
+		UnjailWaitSeconds: unjailWaitSeconds,
+		ReportReward:      reportReward,
 	}
 }
 
@@ -77,6 +89,8 @@ func DefaultParams() Params {
 		DefaultFailsBeforeJail,
 		DefaultTamperSlashBps,
 		DefaultReportOnly,
+		DefaultUnjailWaitSeconds,
+		DefaultReportReward,
 	)
 }
 
@@ -108,10 +122,10 @@ func (p Params) Validate() error {
 	if p.TamperSlashBps > BpsDenominator {
 		return errorsmod.Wrapf(ErrInvalidParams, "tamper_slash_bps %d, want at most %d", p.TamperSlashBps, BpsDenominator)
 	}
-	// This version can record results but cannot yet apply penalties, so it
-	// refuses to be configured as if it could.
-	if !p.ReportOnly {
-		return errorsmod.Wrap(ErrInvalidParams, "report_only must be true: penalties are not built in this version")
+	if p.UnjailWaitSeconds > MaxUnbondingSeconds {
+		return errorsmod.Wrapf(ErrInvalidParams, "unjail_wait_seconds %d, want at most %d", p.UnjailWaitSeconds, MaxUnbondingSeconds)
 	}
+	// report_only and report_reward accept any value: false switches jailing
+	// and slashing on, and a reward of zero switches prober payments off.
 	return nil
 }

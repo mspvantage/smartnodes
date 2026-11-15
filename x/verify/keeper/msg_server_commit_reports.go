@@ -96,6 +96,13 @@ func (k msgServer) CommitReports(ctx context.Context, msg *types.MsgCommitReport
 		if node.Status != registrytypes.StatusActive {
 			return nil, errorsmod.Wrapf(types.ErrNodeNotActive, "node %d", nodeID)
 		}
+		jailed, err := k.isJailed(ctx, nodeID)
+		if err != nil {
+			return nil, err
+		}
+		if jailed {
+			return nil, errorsmod.Wrapf(types.ErrNodeJailed, "node %d", nodeID)
+		}
 		if !types.Selected(seed, nodeID, params.SampleBps) {
 			return nil, errorsmod.Wrapf(types.ErrNodeNotSelected, "node %d, round %d", nodeID, round)
 		}

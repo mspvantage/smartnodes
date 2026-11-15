@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"cosmossdk.io/collections"
+	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/mspvantage/smartnodes/x/verify/types"
@@ -225,6 +226,7 @@ func (k Keeper) TallyDue(ctx context.Context, current uint64, params types.Param
 		return err
 	}
 
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	for from := 0; from < len(entries); {
 		to := from + 1
 		for to < len(entries) &&
@@ -232,8 +234,26 @@ func (k Keeper) TallyDue(ctx context.Context, current uint64, params types.Param
 			entries[to].nodeID == entries[from].nodeID {
 			to++
 		}
-		if err := k.tallyNode(ctx, entries[from:to], params); err != nil {
-			return err
+		group := entries[from:to]
+
+		// Each node is tallied on its own copy of the state. If one node's
+		// tally fails, its reports are dropped and an event records why;
+		// every other node is still tallied. Without this, one bad entry
+		// would be retried every block and verification would stall.
+		cacheCtx, write := sdkCtx.CacheContext()
+		if err := k.tallyNode(cacheCtx, group, params); err != nil {
+			emit(ctx, EventTypeTallyFailed,
+				sdk.NewAttribute(AttributeKeyRound, u64(group[0].key.K1())),
+				sdk.NewAttribute(AttributeKeyNodeID, u64(group[0].nodeID)),
+				sdk.NewAttribute(AttributeKeyReason, err.Error()),
+			)
+			for _, e := range group {
+				if err := k.Reports.Remove(ctx, e.key); err != nil {
+					return err
+				}
+			}
+		} else {
+			write()
 		}
 		from = to
 	}
@@ -241,8 +261,9 @@ func (k Keeper) TallyDue(ctx context.Context, current uint64, params types.Param
 }
 
 // tallyNode decides one node's outcome for one round, updates the node's
-// record and the probers' counts, and deletes the reports.
-func (k Keeper) tallyNode(ctx context.Context, group []tallyEntry, params types.Params) error {
+// record and the probers' counts, pays accepted reports, applies penalties
+// when they are switched on, and deletes the reports.
+func (k Keeper) tallyNode(ctx sdk.Context, group []tallyEntry, params types.Params) error {
 	round := group[0].key.K1()
 	nodeID := group[0].nodeID
 
@@ -265,17 +286,15 @@ func (k Keeper) tallyNode(ctx context.Context, group []tallyEntry, params types.
 		if err := k.Reports.Remove(ctx, e.key); err != nil {
 			return err
 		}
-		if err := k.scoreProber(ctx, e.proberID, e.result, outcome); err != nil {
+		if err := k.scoreProber(ctx, e.proberID, e.result, outcome, params); err != nil {
 			return err
 		}
 	}
 
 	// A node that has left the registry keeps no record.
-	if _, err := k.registryKeeper.GetNode(ctx, nodeID); err != nil {
-		if err := k.NodeRecord.Remove(ctx, nodeID); err != nil {
-			return err
-		}
-		return nil
+	node, err := k.registryKeeper.GetNode(ctx, nodeID)
+	if err != nil {
+		return k.NodeRecord.Remove(ctx, nodeID)
 	}
 
 	rec, err := k.NodeRecord.Get(ctx, nodeID)
@@ -288,7 +307,8 @@ func (k Keeper) tallyNode(ctx context.Context, group []tallyEntry, params types.
 	rec.LastRound = round
 	switch outcome {
 	case types.OutcomePass:
-		rec.Verified = true
+		// A jailed node stays unverified until its operator unjails it.
+		rec.Verified = !rec.Jailed
 		rec.LastPassRound = round
 		rec.ConsecutiveFails = 0
 		rec.Passes++
@@ -301,12 +321,6 @@ func (k Keeper) tallyNode(ctx context.Context, group []tallyEntry, params types.
 		// for this round, but this is not counted against it.
 		rec.Verified = false
 	}
-	if tamperProven {
-		rec.TamperRounds++
-	}
-	if err := k.NodeRecord.Set(ctx, nodeID, rec); err != nil {
-		return err
-	}
 
 	emit(ctx, EventTypeTally,
 		sdk.NewAttribute(AttributeKeyRound, u64(round)),
@@ -317,24 +331,72 @@ func (k Keeper) tallyNode(ctx context.Context, group []tallyEntry, params types.
 		sdk.NewAttribute(AttributeKeyTamper, u64(tamper)),
 		sdk.NewAttribute(AttributeKeySilent, u64(silent)),
 	)
-	// This version only reports. The event marks where jailing would happen
-	// once penalties are switched on.
-	if outcome == types.OutcomeFail && rec.ConsecutiveFails >= params.FailsBeforeJail {
-		emit(ctx, EventTypeWouldJail,
-			sdk.NewAttribute(AttributeKeyNodeID, u64(nodeID)),
-			sdk.NewAttribute(AttributeKeyFails, u64(rec.ConsecutiveFails)),
-		)
+
+	// Proven tampering: every assigned prober reported it. This is the only
+	// fault that burns bond, because it is deliberate.
+	if tamperProven {
+		rec.TamperRounds++
+		if params.ReportOnly {
+			emit(ctx, EventTypeWouldSlash, sdk.NewAttribute(AttributeKeyNodeID, u64(nodeID)))
+		} else {
+			amount := node.Bond.Amount.MulRaw(int64(params.TamperSlashBps)).QuoRaw(types.BpsDenominator)
+			if amount.IsPositive() {
+				burned, err := k.registryKeeper.SlashNode(ctx, nodeID, amount)
+				if err != nil {
+					return err
+				}
+				if burned.IsUint64() {
+					rec.Slashed += burned.Uint64()
+				}
+				emit(ctx, EventTypeSlash,
+					sdk.NewAttribute(AttributeKeyNodeID, u64(nodeID)),
+					sdk.NewAttribute(AttributeKeyAmount, burned.String()),
+				)
+			}
+			k.jail(ctx, &rec)
+		}
 	}
-	return nil
+
+	// Too many failed rounds in a row: the node is jailed. Being offline
+	// costs listing and income, never bond.
+	if outcome == types.OutcomeFail && rec.ConsecutiveFails >= params.FailsBeforeJail {
+		if params.ReportOnly {
+			emit(ctx, EventTypeWouldJail,
+				sdk.NewAttribute(AttributeKeyNodeID, u64(nodeID)),
+				sdk.NewAttribute(AttributeKeyFails, u64(rec.ConsecutiveFails)),
+			)
+		} else {
+			k.jail(ctx, &rec)
+		}
+	}
+
+	return k.NodeRecord.Set(ctx, nodeID, rec)
 }
 
-// scoreProber records whether a prober's report agreed with the outcome.
+// jail marks a node record as jailed. Jailing an already jailed node changes
+// nothing, so the waiting period is not restarted by reports still in flight.
+func (k Keeper) jail(ctx context.Context, rec *types.NodeRecord) {
+	if rec.Jailed {
+		return
+	}
+	rec.Jailed = true
+	rec.JailedAt = blockUnix(ctx)
+	rec.JailCount++
+	rec.Verified = false
+	emit(ctx, EventTypeJail,
+		sdk.NewAttribute(AttributeKeyNodeID, u64(rec.NodeId)),
+		sdk.NewAttribute(AttributeKeyFails, u64(rec.ConsecutiveFails)),
+	)
+}
+
+// scoreProber records whether a prober's report agreed with the outcome and
+// pays for an accepted report.
 //
 //   - A sealed report that was never opened counts against the prober.
 //   - If the node's outcome was decided, an opened report counts for the
 //     prober when it agrees and against it when it does not.
 //   - If the outcome was not decided, opened reports are not scored.
-func (k Keeper) scoreProber(ctx context.Context, proberID, result uint64, outcome string) error {
+func (k Keeper) scoreProber(ctx sdk.Context, proberID, result uint64, outcome string, params types.Params) error {
 	var accepted, outlier bool
 	switch {
 	case !types.ValidResult(result):
@@ -362,5 +424,47 @@ func (k Keeper) scoreProber(ctx context.Context, proberID, result uint64, outcom
 	} else {
 		prober.Outliers++
 	}
-	return k.Prober.Set(ctx, proberID, prober)
+	if err := k.Prober.Set(ctx, proberID, prober); err != nil {
+		return err
+	}
+	if accepted {
+		k.payReward(ctx, prober, params.ReportReward)
+	}
+	return nil
+}
+
+// payReward pays a prober for one accepted report from the prober fund. The
+// fund pays what it holds, so a low fund means smaller payments, never a
+// failure. A payment that fails for any reason is skipped and recorded in an
+// event; it must not undo the tally.
+func (k Keeper) payReward(ctx sdk.Context, prober types.Prober, reward uint64) {
+	if reward == 0 || k.ticketsKeeper == nil {
+		return
+	}
+	cacheCtx, write := ctx.CacheContext()
+	paid, err := func() (sdk.Coin, error) {
+		owner, err := k.addressCodec.StringToBytes(prober.Owner)
+		if err != nil {
+			return sdk.Coin{}, err
+		}
+		denom, err := k.registryKeeper.BondDenom(cacheCtx)
+		if err != nil {
+			return sdk.Coin{}, err
+		}
+		return k.ticketsKeeper.PayFromProberFund(cacheCtx, owner, sdk.NewCoin(denom, math.NewIntFromUint64(reward)))
+	}()
+	if err != nil {
+		emit(ctx, EventTypeRewardFailed,
+			sdk.NewAttribute(AttributeKeyProberID, u64(prober.Id)),
+			sdk.NewAttribute(AttributeKeyReason, err.Error()),
+		)
+		return
+	}
+	write()
+	if paid.IsPositive() {
+		emit(ctx, EventTypeReward,
+			sdk.NewAttribute(AttributeKeyProberID, u64(prober.Id)),
+			sdk.NewAttribute(AttributeKeyAmount, paid.String()),
+		)
+	}
 }

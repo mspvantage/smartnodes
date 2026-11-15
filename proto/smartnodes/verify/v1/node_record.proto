@@ -20,4 +20,14 @@ message NodeRecord {
   // tamper_rounds counts rounds in which every assigned prober reported
   // tampering.
   uint64 tamper_rounds = 8;
+  // jailed nodes are not probed and are left out of client listings until
+  // the operator unjails them.
+  bool jailed = 9;
+  // jailed_at is the block time, in Unix seconds, of the last jailing.
+  int64 jailed_at = 10;
+  // jail_count counts how many times the node has been jailed.
+  uint64 jail_count = 11;
+  // slashed is the total bond burned for proven tampering, in the base unit
+  // of the staking token.
+  uint64 slashed = 12;
 }

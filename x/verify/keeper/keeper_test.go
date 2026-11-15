@@ -71,7 +71,11 @@ func (m *mockBank) SendCoinsFromModuleToAccount(_ context.Context, senderModule 
 
 // mockRegistry is an in-memory node registry.
 type mockRegistry struct {
-	nodes map[uint64]registrytypes.Node
+	nodes  map[uint64]registrytypes.Node
+	burned math.Int
+	// failSlash makes SlashNode fail, to test that one node's failed tally
+	// does not stop the others.
+	failSlash bool
 }
 
 func (m *mockRegistry) GetNode(_ context.Context, id uint64) (registrytypes.Node, error) {
@@ -86,6 +90,44 @@ func (m *mockRegistry) BondDenom(context.Context) (string, error) {
 	return bondDenom, nil
 }
 
+// SlashNode burns bond like the real registry: at most what the node has.
+func (m *mockRegistry) SlashNode(_ context.Context, id uint64, amount math.Int) (math.Int, error) {
+	if m.failSlash {
+		return math.ZeroInt(), sdkerrors.ErrInvalidRequest
+	}
+	node, ok := m.nodes[id]
+	if !ok {
+		return math.ZeroInt(), errorsmod.Wrapf(registrytypes.ErrNodeNotFound, "id %d", id)
+	}
+	burn := math.MinInt(amount, node.Bond.Amount)
+	node.Bond = node.Bond.SubAmount(burn)
+	m.nodes[id] = node
+	m.burned = m.burned.Add(burn)
+	return burn, nil
+}
+
+// mockTickets is an in-memory prober fund. Like the real one, it pays what
+// it holds and no more.
+type mockTickets struct {
+	bank *mockBank
+	fund math.Int
+	// failPay makes every payment fail, to test that a failed payment
+	// cannot undo a tally.
+	failPay bool
+}
+
+func (m *mockTickets) PayFromProberFund(_ context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error) {
+	if m.failPay {
+		return sdk.Coin{}, sdkerrors.ErrInvalidRequest
+	}
+	pay := sdk.NewCoin(want.Denom, math.MinInt(want.Amount, m.fund))
+	if pay.IsPositive() {
+		m.fund = m.fund.Sub(pay.Amount)
+		m.bank.accounts[string(recipient)] = m.bank.accounts[string(recipient)].Add(pay)
+	}
+	return pay, nil
+}
+
 type fixture struct {
 	ctx          context.Context
 	sdkCtx       sdk.Context
@@ -93,6 +135,7 @@ type fixture struct {
 	addressCodec address.Codec
 	bank         *mockBank
 	registry     *mockRegistry
+	tickets      *mockTickets
 	ms           types.MsgServer
 	qs           types.QueryServer
 }
@@ -114,7 +157,8 @@ func initFixture(t *testing.T) *fixture {
 	authority := authtypes.NewModuleAddress(types.GovModuleName)
 
 	bank := newMockBank()
-	registry := &mockRegistry{nodes: map[uint64]registrytypes.Node{}}
+	registry := &mockRegistry{nodes: map[uint64]registrytypes.Node{}, burned: math.ZeroInt()}
+	tickets := &mockTickets{bank: bank, fund: math.ZeroInt()}
 
 	k := keeper.NewKeeper(
 		storeService,
@@ -123,7 +167,7 @@ func initFixture(t *testing.T) *fixture {
 		authority,
 		bank,
 		registry,
-		nil,
+		tickets,
 	)
 
 	// Default parameters, but with a short round.
@@ -140,6 +184,7 @@ func initFixture(t *testing.T) *fixture {
 		addressCodec: addressCodec,
 		bank:         bank,
 		registry:     registry,
+		tickets:      tickets,
 		ms:           keeper.NewMsgServerImpl(k),
 		qs:           keeper.NewQueryServerImpl(k),
 	}
@@ -220,9 +265,26 @@ func (f *fixture) moduleBalance() math.Int {
 	return f.bank.modules[types.ModuleName].AmountOf(bondDenom)
 }
 
-// addNode puts a node in the mock registry.
+// nodeBond is the bond every test node starts with: 1,000 SNODE.
+const nodeBond = uint64(1_000_000_000)
+
+// addNode puts a node in the mock registry, run by a fixed test operator.
 func (f *fixture) addNode(id uint64, status uint64) {
-	f.registry.nodes[id] = registrytypes.Node{Id: id, Tier: registrytypes.TierEntry, Status: status}
+	operator, _ := f.addressCodec.BytesToString(bytes.Repeat([]byte{0xA0}, 20))
+	f.registry.nodes[id] = registrytypes.Node{
+		Id: id, Operator: operator, Tier: registrytypes.TierEntry, Status: status, Bond: coin(nodeBond),
+	}
+}
+
+// operator returns the address that runs every test node.
+func (f *fixture) operator() string {
+	operator, _ := f.addressCodec.BytesToString(bytes.Repeat([]byte{0xA0}, 20))
+	return operator
+}
+
+// nodeBondLeft returns what is left of a test node's bond.
+func (f *fixture) nodeBondLeft(id uint64) math.Int {
+	return f.registry.nodes[id].Bond.Amount
 }
 
 // hasEvent reports whether an event of the given type has been emitted.

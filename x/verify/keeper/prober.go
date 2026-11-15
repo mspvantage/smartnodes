@@ -26,6 +26,13 @@ const (
 	EventTypeTally            = "verify_tally"
 	EventTypeWouldJail        = "verify_would_jail"
 	EventTypeBlockerFailed    = "verify_begin_block_failed"
+	EventTypeTallyFailed      = "verify_tally_failed"
+	EventTypeJail             = "verify_jail"
+	EventTypeUnjail           = "verify_unjail"
+	EventTypeSlash            = "verify_slash"
+	EventTypeWouldSlash       = "verify_would_slash"
+	EventTypeReward           = "verify_reward"
+	EventTypeRewardFailed     = "verify_reward_failed"
 
 	AttributeKeyProberID     = "prober_id"
 	AttributeKeyOwner        = "owner"
@@ -238,4 +245,16 @@ func (k Keeper) applySetChanges(ctx context.Context) error {
 		emit(ctx, EventTypeProberJoined, sdk.NewAttribute(AttributeKeyProberID, u64(id)))
 	}
 	return nil
+}
+
+// isJailed reports whether a node is jailed. A node with no record is not.
+func (k Keeper) isJailed(ctx context.Context, nodeID uint64) (bool, error) {
+	rec, err := k.NodeRecord.Get(ctx, nodeID)
+	if err != nil {
+		if errors.Is(err, collections.ErrNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return rec.Jailed, nil
 }

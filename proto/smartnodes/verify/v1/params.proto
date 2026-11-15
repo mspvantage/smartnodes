@@ -19,4 +19,10 @@ message Params {
   uint64 fails_before_jail = 6;
   uint64 tamper_slash_bps = 7;
   bool report_only = 8;
+  // unjail_wait_seconds is how long a jailed node must wait before its
+  // operator may return it to service.
+  uint64 unjail_wait_seconds = 9;
+  // report_reward is paid to a prober for each accepted report, in the base
+  // unit of the staking token, from the prober fund.
+  uint64 report_reward = 10;
 }
