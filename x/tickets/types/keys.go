@@ -27,3 +27,15 @@ var (
 	PurchaseKey      = collections.NewPrefix("purchase/value/")
 	PurchaseCountKey = collections.NewPrefix("purchase/count/")
 )
+
+var (
+	// SpentKey prefixes the set of redeemed tickets, keyed by issuer key id
+	// and ticket public key.
+	SpentKey = collections.NewPrefix("spent/")
+	// QueueKey prefixes the work queue processed at the end of each block,
+	// keyed by block height and purchase id.
+	QueueKey = collections.NewPrefix("queue/")
+	// AccruedFeesKey prefixes protocol fees collected and not yet distributed,
+	// keyed by denom.
+	AccruedFeesKey = collections.NewPrefix("fees/")
+)

@@ -36,12 +36,13 @@ func TestMsgUpdateParams(t *testing.T) {
 			expErrMsg: "invalid authority",
 		},
 		{
-			name: "send enabled param",
+			name: "zero params are rejected",
 			input: &types.MsgUpdateParams{
 				Authority: authorityStr,
 				Params:    types.Params{},
 			},
-			expErr: false,
+			expErr:    true,
+			expErrMsg: "invalid module parameters",
 		},
 		{
 			name: "all good",

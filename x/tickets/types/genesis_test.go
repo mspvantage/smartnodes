@@ -20,10 +20,10 @@ func TestGenesisState_Validate(t *testing.T) {
 		},
 		{
 			desc:     "valid genesis state",
-			genState: &types.GenesisState{IssuerKeyList: []types.IssuerKey{{Id: 0}, {Id: 1}}, IssuerKeyCount: 2, PurchaseList: []types.Purchase{{Id: 0}, {Id: 1}}, PurchaseCount: 2}, valid: true,
+			genState: &types.GenesisState{Params: types.DefaultParams(), IssuerKeyList: []types.IssuerKey{{Id: 0}, {Id: 1}}, IssuerKeyCount: 2, PurchaseList: []types.Purchase{{Id: 0}, {Id: 1}}, PurchaseCount: 2}, valid: true,
 		}, {
 			desc: "duplicated issuerKey",
-			genState: &types.GenesisState{
+			genState: &types.GenesisState{Params: types.DefaultParams(),
 				IssuerKeyList: []types.IssuerKey{
 					{
 						Id: 0,
@@ -36,7 +36,7 @@ func TestGenesisState_Validate(t *testing.T) {
 			}, valid: false,
 		}, {
 			desc: "invalid issuerKey count",
-			genState: &types.GenesisState{
+			genState: &types.GenesisState{Params: types.DefaultParams(),
 				IssuerKeyList: []types.IssuerKey{
 					{
 						Id: 1,
@@ -47,7 +47,7 @@ func TestGenesisState_Validate(t *testing.T) {
 			}, valid: false,
 		}, {
 			desc: "duplicated purchase",
-			genState: &types.GenesisState{
+			genState: &types.GenesisState{Params: types.DefaultParams(),
 				PurchaseList: []types.Purchase{
 					{
 						Id: 0,
@@ -60,7 +60,7 @@ func TestGenesisState_Validate(t *testing.T) {
 			valid: false,
 		}, {
 			desc: "invalid purchase count",
-			genState: &types.GenesisState{
+			genState: &types.GenesisState{Params: types.DefaultParams(),
 				PurchaseList: []types.Purchase{
 					{
 						Id: 1,

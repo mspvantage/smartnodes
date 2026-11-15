@@ -1,20 +1,35 @@
 package types
 
-// DefaultIssuanceDeadlineBlocks represents the IssuanceDeadlineBlocks default value.
-// TODO: Determine the default value.
-var DefaultIssuanceDeadlineBlocks uint64 = 0
+import (
+	errorsmod "cosmossdk.io/errors"
+)
 
-// DefaultMaxBatch represents the MaxBatch default value.
-// TODO: Determine the default value.
-var DefaultMaxBatch uint64 = 0
+// Default parameter values. These are starting points for test networks and
+// must be reviewed before any public launch.
+var (
+	// DefaultIssuanceDeadlineBlocks is how long issuers have to sign a
+	// purchase before the buyer is refunded: about 8 minutes at 5 seconds a block.
+	DefaultIssuanceDeadlineBlocks uint64 = 100
+	// DefaultMaxBatch is the most tickets in one purchase or redemption.
+	DefaultMaxBatch uint64 = 100
+	// DefaultFeeBps is the protocol fee in basis points: 500 = 5%.
+	DefaultFeeBps uint64 = 500
+	// DefaultRetentionBlocks is how long a fulfilled purchase, with its blind
+	// signatures, stays readable: about one day at 5 seconds a block.
+	DefaultRetentionBlocks uint64 = 17_280
+)
 
-// DefaultFeeBps represents the FeeBps default value.
-// TODO: Determine the default value.
-var DefaultFeeBps uint64 = 0
-
-// DefaultRetentionBlocks represents the RetentionBlocks default value.
-// TODO: Determine the default value.
-var DefaultRetentionBlocks uint64 = 0
+// Bounds governance must stay within.
+const (
+	MaxIssuanceDeadlineBlocks uint64 = 100_000
+	// HardMaxBatch bounds the work one transaction can ask of every validator.
+	HardMaxBatch uint64 = 1_000
+	// MaxFeeBps caps the protocol fee at 50%, so nodes always keep at least half.
+	MaxFeeBps          uint64 = 5_000
+	MaxRetentionBlocks uint64 = 10_000_000
+	// BasisPoints is the denominator for FeeBps.
+	BasisPoints uint64 = 10_000
+)
 
 // NewParams creates a new Params instance.
 func NewParams(
@@ -64,24 +79,32 @@ func (p Params) Validate() error {
 
 // validateIssuanceDeadlineBlocks validates the IssuanceDeadlineBlocks parameter.
 func validateIssuanceDeadlineBlocks(v uint64) error {
-	// TODO implement validation
+	if v == 0 || v > MaxIssuanceDeadlineBlocks {
+		return errorsmod.Wrapf(ErrInvalidParams, "issuance_deadline_blocks must be 1-%d, got %d", MaxIssuanceDeadlineBlocks, v)
+	}
 	return nil
 }
 
 // validateMaxBatch validates the MaxBatch parameter.
 func validateMaxBatch(v uint64) error {
-	// TODO implement validation
+	if v == 0 || v > HardMaxBatch {
+		return errorsmod.Wrapf(ErrInvalidParams, "max_batch must be 1-%d, got %d", HardMaxBatch, v)
+	}
 	return nil
 }
 
 // validateFeeBps validates the FeeBps parameter.
 func validateFeeBps(v uint64) error {
-	// TODO implement validation
+	if v > MaxFeeBps {
+		return errorsmod.Wrapf(ErrInvalidParams, "fee_bps must be 0-%d, got %d", MaxFeeBps, v)
+	}
 	return nil
 }
 
 // validateRetentionBlocks validates the RetentionBlocks parameter.
 func validateRetentionBlocks(v uint64) error {
-	// TODO implement validation
+	if v == 0 || v > MaxRetentionBlocks {
+		return errorsmod.Wrapf(ErrInvalidParams, "retention_blocks must be 1-%d, got %d", MaxRetentionBlocks, v)
+	}
 	return nil
 }

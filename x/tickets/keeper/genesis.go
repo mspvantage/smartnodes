@@ -3,10 +3,17 @@ package keeper
 import (
 	"context"
 
+	"cosmossdk.io/collections"
+
 	"github.com/mspvantage/smartnodes/x/tickets/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.
+//
+// KNOWN GAP: the list of spent tickets and the accrued fees are not part of
+// the genesis format yet. A chain restarted from an exported genesis would
+// forget which tickets were redeemed. This must be closed before the module
+// is used on any network that upgrades by export.
 func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) error {
 	for _, elem := range genState.IssuerKeyList {
 		if err := k.IssuerKey.Set(ctx, elem.Id, elem); err != nil {
@@ -17,8 +24,18 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	if err := k.IssuerKeySeq.Set(ctx, genState.IssuerKeyCount); err != nil {
 		return err
 	}
+	params := genState.Params
 	for _, elem := range genState.PurchaseList {
 		if err := k.Purchase.Set(ctx, elem.Id, elem); err != nil {
+			return err
+		}
+		// Rebuild the end-of-block queue: a refund deadline for an unsigned
+		// purchase, a deletion time for a signed one.
+		due := elem.Deadline
+		if IsFulfilled(elem) {
+			due = elem.FulfilledAt + int64(params.RetentionBlocks)
+		}
+		if err := k.Queue.Set(ctx, collections.Join(due, elem.Id)); err != nil {
 			return err
 		}
 	}

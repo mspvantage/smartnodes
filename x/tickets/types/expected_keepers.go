@@ -6,10 +6,14 @@ import (
 	"cosmossdk.io/core/address"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	registrytypes "github.com/mspvantage/smartnodes/x/registry/types"
 )
 
+// RegistryKeeper defines what the tickets module needs from the node registry.
 type RegistryKeeper interface {
-	// TODO Add methods imported from registry should be defined here
+	// GetNode returns a registered node, or an error if it does not exist.
+	GetNode(ctx context.Context, id uint64) (registrytypes.Node, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.
@@ -22,7 +26,10 @@ type AuthKeeper interface {
 // BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
 	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
-	// Methods imported from bank should be defined here
+	// SendCoinsFromAccountToModule locks a buyer's payment in escrow.
+	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+	// SendCoinsFromModuleToAccount pays a node, or refunds a buyer.
+	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.

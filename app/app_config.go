@@ -68,7 +68,10 @@ var (
 		// The registry account only holds node bonds and burns slashed bond.
 		// It must never be able to mint.
 		{Account: registrymoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
-		{Account: ticketsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
+		// The tickets account only holds escrowed payments. It needs no
+		// special rights: it must never mint, burn or stake.
+		{Account: ticketsmoduletypes.ModuleName},
+	}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -80,6 +83,9 @@ var (
 		// Direct transfers to the registry account are refused, so its balance
 		// always equals the sum of node bonds.
 		registrymoduletypes.ModuleName,
+		// Direct transfers to the tickets escrow are refused too, so its
+		// balance always matches what the module's records say it holds.
+		ticketsmoduletypes.ModuleName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}
