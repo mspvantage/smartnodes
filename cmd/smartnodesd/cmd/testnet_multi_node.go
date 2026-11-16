@@ -272,7 +272,9 @@ func initTestnetFiles(
 			valPubKeys[i],
 			valTokens,
 			stakingtypes.NewDescription(nodeDirName, "", "", "", ""),
-			stakingtypes.NewCommissionRates(math.LegacyOneDec(), math.LegacyOneDec(), math.LegacyOneDec()),
+			// 10% commission, 20% maximum, 1% maximum daily change. The chain
+			// refuses a validator whose maximum is above the 20% ceiling.
+			stakingtypes.NewCommissionRates(math.LegacyNewDecWithPrec(10, 2), math.LegacyNewDecWithPrec(20, 2), math.LegacyNewDecWithPrec(1, 2)),
 			math.OneInt(),
 		)
 		if err != nil {

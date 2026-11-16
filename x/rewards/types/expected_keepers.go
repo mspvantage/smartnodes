@@ -15,6 +15,8 @@ type StakingKeeper interface {
 	ConsensusAddressCodec() address.Codec
 	// ValidatorByConsAddr finds a validator from the address it signs blocks with.
 	ValidatorByConsAddr(context.Context, sdk.ConsAddress) (stakingtypes.ValidatorI, error)
+	// GetValidator reads a validator, to check a new validator's commission.
+	GetValidator(ctx context.Context, addr sdk.ValAddress) (stakingtypes.Validator, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.

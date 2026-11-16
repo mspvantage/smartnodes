@@ -59,6 +59,16 @@ func (m *mockBank) SendCoinsFromModuleToModule(_ context.Context, senderModule, 
 // mockStaking knows validators by the address they sign blocks with.
 type mockStaking struct {
 	byCons map[string]stakingtypes.Validator
+	// byOper holds validators by operator address, for the commission check.
+	byOper map[string]stakingtypes.Validator
+}
+
+func (m *mockStaking) GetValidator(_ context.Context, addr sdk.ValAddress) (stakingtypes.Validator, error) {
+	v, ok := m.byOper[string(addr)]
+	if !ok {
+		return stakingtypes.Validator{}, stakingtypes.ErrNoValidatorFound
+	}
+	return v, nil
 }
 
 func (m *mockStaking) ConsensusAddressCodec() address.Codec { return nil }
@@ -126,7 +136,7 @@ func initFixture(t *testing.T) *fixture {
 	authority := authtypes.NewModuleAddress(types.GovModuleName)
 
 	bank := newMockBank()
-	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}}
+	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}, byOper: map[string]stakingtypes.Validator{}}
 	distr := &mockDistr{
 		bank:         bank,
 		communityTax: math.LegacyNewDecWithPrec(2, 2), // 2%

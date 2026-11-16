@@ -8,6 +8,7 @@ import (
 	"cosmossdk.io/depinject/appconfig"
 	"github.com/cosmos/cosmos-sdk/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/mspvantage/smartnodes/x/rewards/keeper"
 	"github.com/mspvantage/smartnodes/x/rewards/types"
@@ -44,6 +45,8 @@ type ModuleOutputs struct {
 
 	RewardsKeeper keeper.Keeper
 	Module        appmodule.AppModule
+	// Hooks lets the rewards module check each new validator's commission.
+	Hooks stakingtypes.StakingHooksWrapper
 }
 
 func ProvideModule(in ModuleInputs) ModuleOutputs {
@@ -63,5 +66,9 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 	)
 	m := NewAppModule(in.Cdc, k, in.AuthKeeper, in.BankKeeper)
 
-	return ModuleOutputs{RewardsKeeper: k, Module: m}
+	return ModuleOutputs{
+		RewardsKeeper: k,
+		Module:        m,
+		Hooks:         stakingtypes.StakingHooksWrapper{StakingHooks: k.Hooks()},
+	}
 }

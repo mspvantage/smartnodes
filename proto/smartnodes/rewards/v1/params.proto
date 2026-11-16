@@ -12,4 +12,8 @@ message Params {
   option (gogoproto.equal) = true;
 
   uint64 equal_share_bps = 1;
+  // max_commission_bps is the highest maximum commission a new validator
+  // may set, in basis points. A validator can never raise its commission
+  // above the maximum it set when it was created.
+  uint64 max_commission_bps = 2;
 }

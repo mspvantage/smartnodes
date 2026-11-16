@@ -168,6 +168,10 @@ var (
 						slashingtypes.ModuleName,
 						govtypes.ModuleName,
 						minttypes.ModuleName,
+						// rewards must be initialised before genutil: genutil creates
+						// the genesis validators, and the rewards module checks each
+						// new validator's commission against its own settings.
+						rewardsmoduletypes.ModuleName,
 						genutiltypes.ModuleName,
 						evidencetypes.ModuleName,
 						feegrant.ModuleName,
@@ -178,7 +182,7 @@ var (
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
 						// chain modules
-						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, rewardsmoduletypes.ModuleName, verifymoduletypes.ModuleName},
+						registrymoduletypes.ModuleName, ticketsmoduletypes.ModuleName, verifymoduletypes.ModuleName},
 				}),
 			},
 			{

@@ -19,9 +19,16 @@ func TestGenesisState_Validate(t *testing.T) {
 			valid:    true,
 		},
 		{
-			desc:     "valid genesis state",
-			genState: &types.GenesisState{},
+			desc:     "explicit default params",
+			genState: &types.GenesisState{Params: types.DefaultParams()},
 			valid:    true,
+		},
+		{
+			// A commission ceiling of zero would stop any validator from
+			// being created, so empty params are refused.
+			desc:     "zero params are rejected",
+			genState: &types.GenesisState{},
+			valid:    false,
 		},
 	}
 	for _, tc := range tests {
