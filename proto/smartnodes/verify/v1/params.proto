@@ -25,4 +25,18 @@ message Params {
   // report_reward is paid to a prober for each accepted report, in the base
   // unit of the staking token, from the prober fund.
   uint64 report_reward = 10;
+  // pool_release_bps_per_year is the share of the node rewards pool's
+  // remaining balance released per year, in basis points.
+  uint64 pool_release_bps_per_year = 11;
+  // node_share_bps is the share of each release that goes to verified
+  // nodes, in basis points. The rest goes to the prober fund.
+  uint64 node_share_bps = 12;
+  // reward_cap_bps_per_year caps a node's reward per year, as a share of
+  // its tier's minimum bond, in basis points.
+  uint64 reward_cap_bps_per_year = 13;
+  // blocks_per_year turns the yearly rates above into per-round amounts.
+  uint64 blocks_per_year = 14;
+  // reward_retention_rounds is how many rounds a round's reward budget is
+  // kept. A share not fixed within this time is forfeited to the pool.
+  uint64 reward_retention_rounds = 15;
 }

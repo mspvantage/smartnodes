@@ -157,6 +157,23 @@ func (k Keeper) startRound(ctx sdk.Context, round uint64) error {
 	if err := k.applySetChanges(ctx); err != nil {
 		return err
 	}
+
+	// The reward budget is set on its own copy of the state. If it fails,
+	// the round still starts; it simply has no reward budget.
+	params, err := k.Params.Get(ctx)
+	if err != nil {
+		return err
+	}
+	budgetCtx, writeBudget := ctx.CacheContext()
+	if err := k.openRewardRound(budgetCtx, round, params); err != nil {
+		emit(ctx, EventTypeBudgetFailed,
+			sdk.NewAttribute(AttributeKeyRound, u64(round)),
+			sdk.NewAttribute(AttributeKeyReason, err.Error()),
+		)
+	} else {
+		writeBudget()
+	}
+
 	active, err := k.activeCount(ctx)
 	if err != nil {
 		return err
@@ -294,7 +311,7 @@ func (k Keeper) tallyNode(ctx sdk.Context, group []tallyEntry, params types.Para
 	// A node that has left the registry keeps no record.
 	node, err := k.registryKeeper.GetNode(ctx, nodeID)
 	if err != nil {
-		return k.NodeRecord.Remove(ctx, nodeID)
+		return k.dropNodeRecord(ctx, nodeID)
 	}
 
 	rec, err := k.NodeRecord.Get(ctx, nodeID)
@@ -320,6 +337,20 @@ func (k Keeper) tallyNode(ctx sdk.Context, group []tallyEntry, params types.Para
 		// Not enough agreeing reports to decide. The node is not verified
 		// for this round, but this is not counted against it.
 		rec.Verified = false
+	}
+
+	// Rewards. Rounds are tallied in order, so by the time a later round's
+	// reports for this node are counted, the earlier round the node earned
+	// in is complete and its share can be fixed.
+	if rec.PendingRound != round {
+		if err := k.settleReward(ctx, &rec); err != nil {
+			return err
+		}
+	}
+	if outcome == types.OutcomePass && rec.Verified {
+		if err := k.earnReward(ctx, &rec, node, round, params); err != nil {
+			return err
+		}
 	}
 
 	emit(ctx, EventTypeTally,

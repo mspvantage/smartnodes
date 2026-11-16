@@ -33,6 +33,10 @@ const (
 	EventTypeWouldSlash       = "verify_would_slash"
 	EventTypeReward           = "verify_reward"
 	EventTypeRewardFailed     = "verify_reward_failed"
+	EventTypeRewardBudget     = "verify_reward_budget"
+	EventTypeBudgetFailed     = "verify_reward_budget_failed"
+	EventTypeClaimReward      = "verify_claim_node_reward"
+	EventTypeFundRewards      = "verify_fund_node_rewards"
 
 	AttributeKeyProberID     = "prober_id"
 	AttributeKeyOwner        = "owner"
@@ -51,6 +55,8 @@ const (
 	AttributeKeySilent       = "silent"
 	AttributeKeyFails        = "consecutive_fails"
 	AttributeKeyReason       = "reason"
+	AttributeKeyNodes        = "nodes"
+	AttributeKeyProbers      = "probers"
 )
 
 func u64(v uint64) string { return strconv.FormatUint(v, 10) }

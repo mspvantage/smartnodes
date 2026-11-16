@@ -41,6 +41,11 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}},
 				},
 				{
+					RpcMethod: "RewardPool",
+					Use:       "reward-pool",
+					Short:     "Shows what the node rewards pool holds, what it owes and the current round's budget",
+				},
+				{
 					RpcMethod:      "Assignment",
 					Use:            "assignment [node-id]",
 					Short:          "Shows whether a node is probed this round and which probers are assigned to it",
@@ -86,6 +91,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Open a sealed report from the previous round; result is 1 (pass), 2 (fail) or 3 (tamper)",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "round"}, {ProtoField: "node_id"}, {ProtoField: "result"}, {ProtoField: "speed_band"}, {ProtoField: "salt"}},
 					FlagOptions:    map[string]*autocliv1.FlagOptions{"proof": {Usage: "proof of probe (not checked in this version)"}},
+				},
+				{
+					RpcMethod:      "ClaimNodeReward",
+					Use:            "claim-node-reward [node-id]",
+					Short:          "Claim the availability reward a node has built up; only the node's operator may",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}},
+				},
+				{
+					RpcMethod:      "FundNodeRewards",
+					Use:            "fund-node-rewards [amount]",
+					Short:          "Add coins to the node rewards pool; the amount is in the base unit of the staking token",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "amount"}},
 				},
 				{
 					RpcMethod:      "Unjail",

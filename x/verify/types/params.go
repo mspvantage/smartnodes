@@ -38,6 +38,20 @@ var (
 	// DefaultReportReward is paid per accepted report, in the base unit of
 	// the staking token: 0.01 SNODE.
 	DefaultReportReward uint64 = 10_000
+	// DefaultPoolReleaseBpsPerYear releases 20% of what is left in the node
+	// rewards pool each year.
+	DefaultPoolReleaseBpsPerYear uint64 = 2_000
+	// DefaultNodeShareBps gives 80% of each release to verified nodes and
+	// the rest to the prober fund.
+	DefaultNodeShareBps uint64 = 8_000
+	// DefaultRewardCapBpsPerYear caps a node's reward at 30% of its tier's
+	// minimum bond per year.
+	DefaultRewardCapBpsPerYear uint64 = 3_000
+	// DefaultBlocksPerYear assumes five-second blocks.
+	DefaultBlocksPerYear uint64 = 6_311_520
+	// DefaultRewardRetentionRounds keeps round budgets for 30 days of
+	// one-hour rounds.
+	DefaultRewardRetentionRounds uint64 = 720
 )
 
 const (
@@ -48,6 +62,15 @@ const (
 	MaxRoundBlocks = 120_960
 	// MaxUnbondingSeconds is the longest unbonding period allowed: one year.
 	MaxUnbondingSeconds = 365 * 24 * 60 * 60
+	// MinRewardRetentionRounds is the shortest time a round budget may be
+	// kept. A round is tallied two rounds after it ends, so anything shorter
+	// would delete budgets before they could be used.
+	MinRewardRetentionRounds = 4
+	// MaxRewardRetentionRounds bounds how many round budgets are stored.
+	MaxRewardRetentionRounds = 100_000
+	// MaxRewardCapBpsPerYear bounds the yearly reward cap at ten times the
+	// minimum bond.
+	MaxRewardCapBpsPerYear = 100_000
 )
 
 // NewParams creates a new Params instance.
@@ -62,6 +85,11 @@ func NewParams(
 	reportOnly bool,
 	unjailWaitSeconds uint64,
 	reportReward uint64,
+	poolReleaseBpsPerYear uint64,
+	nodeShareBps uint64,
+	rewardCapBpsPerYear uint64,
+	blocksPerYear uint64,
+	rewardRetentionRounds uint64,
 ) Params {
 	return Params{
 		RoundBlocks:      roundBlocks,
@@ -75,6 +103,12 @@ func NewParams(
 
 		UnjailWaitSeconds: unjailWaitSeconds,
 		ReportReward:      reportReward,
+
+		PoolReleaseBpsPerYear: poolReleaseBpsPerYear,
+		NodeShareBps:          nodeShareBps,
+		RewardCapBpsPerYear:   rewardCapBpsPerYear,
+		BlocksPerYear:         blocksPerYear,
+		RewardRetentionRounds: rewardRetentionRounds,
 	}
 }
 
@@ -91,6 +125,11 @@ func DefaultParams() Params {
 		DefaultReportOnly,
 		DefaultUnjailWaitSeconds,
 		DefaultReportReward,
+		DefaultPoolReleaseBpsPerYear,
+		DefaultNodeShareBps,
+		DefaultRewardCapBpsPerYear,
+		DefaultBlocksPerYear,
+		DefaultRewardRetentionRounds,
 	)
 }
 
@@ -127,5 +166,20 @@ func (p Params) Validate() error {
 	}
 	// report_only and report_reward accept any value: false switches jailing
 	// and slashing on, and a reward of zero switches prober payments off.
+	if p.PoolReleaseBpsPerYear > BpsDenominator {
+		return errorsmod.Wrapf(ErrInvalidParams, "pool_release_bps_per_year %d, want at most %d", p.PoolReleaseBpsPerYear, BpsDenominator)
+	}
+	if p.NodeShareBps > BpsDenominator {
+		return errorsmod.Wrapf(ErrInvalidParams, "node_share_bps %d, want at most %d", p.NodeShareBps, BpsDenominator)
+	}
+	if p.RewardCapBpsPerYear > MaxRewardCapBpsPerYear {
+		return errorsmod.Wrapf(ErrInvalidParams, "reward_cap_bps_per_year %d, want at most %d", p.RewardCapBpsPerYear, MaxRewardCapBpsPerYear)
+	}
+	if p.BlocksPerYear == 0 {
+		return errorsmod.Wrap(ErrInvalidParams, "blocks_per_year must be greater than zero")
+	}
+	if p.RewardRetentionRounds < MinRewardRetentionRounds || p.RewardRetentionRounds > MaxRewardRetentionRounds {
+		return errorsmod.Wrapf(ErrInvalidParams, "reward_retention_rounds %d, want %d-%d", p.RewardRetentionRounds, MinRewardRetentionRounds, MaxRewardRetentionRounds)
+	}
 	return nil
 }

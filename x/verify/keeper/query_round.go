@@ -110,3 +110,38 @@ func (q queryServer) Assignment(ctx context.Context, req *types.QueryAssignmentR
 	}
 	return res, nil
 }
+
+// RewardPool returns what the node rewards pool holds, what it owes to nodes
+// that have not claimed yet, and the current round's budget.
+func (q queryServer) RewardPool(ctx context.Context, req *types.QueryRewardPoolRequest) (*types.QueryRewardPoolResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+
+	balance, owed, _, _, err := q.k.PoolState(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	address, err := q.k.addressCodec.BytesToString(PoolAddress())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	res := &types.QueryRewardPoolResponse{Address: address}
+	if balance.IsUint64() {
+		res.Balance = balance.Uint64()
+	}
+	if owed.IsUint64() {
+		res.Owed = owed.Uint64()
+	}
+
+	round, _, err := q.k.CurrentRound(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	budget, err := q.k.RoundBudget.Get(ctx, round)
+	if err != nil && !errors.Is(err, collections.ErrNotFound) {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	res.RoundBudget = budget
+	return res, nil
+}

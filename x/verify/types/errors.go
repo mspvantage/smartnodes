@@ -31,5 +31,7 @@ var (
 	ErrNodeJailed         = errors.Register(ModuleName, 1121, "node is jailed")
 	ErrNodeNotJailed      = errors.Register(ModuleName, 1122, "node is not jailed")
 	ErrNotOperator        = errors.Register(ModuleName, 1123, "signer is not the operator of this node")
+	ErrNothingToClaim     = errors.Register(ModuleName, 1125, "no reward to claim")
+	ErrInvalidAmount      = errors.Register(ModuleName, 1126, "invalid amount")
 	ErrJailNotOver        = errors.Register(ModuleName, 1124, "jail waiting period has not ended")
 )

@@ -57,6 +57,14 @@ type Keeper struct {
 
 	// NodeRecord maps a node id to its verification record.
 	NodeRecord collections.Map[uint64, types.NodeRecord]
+
+	// RoundBudget is each recent round's reward budget for verified nodes,
+	// RoundWeight the total weight of the nodes that earned a share of it,
+	// and RewardOwed the total earned by nodes and not yet claimed. The
+	// node rewards pool account must always hold at least RewardOwed.
+	RoundBudget collections.Map[uint64, uint64]
+	RoundWeight collections.Map[uint64, uint64]
+	RewardOwed  collections.Item[uint64]
 }
 
 func NewKeeper(
@@ -99,6 +107,9 @@ func NewKeeper(
 		RoundSeed:     collections.NewMap(sb, types.RoundSeedKey, "roundSeed", collections.Uint64Key, collections.BytesValue),
 		Reports:       collections.NewMap(sb, types.ReportKey, "reports", collections.PairKeyCodec(collections.Uint64Key, collections.BytesKey), collections.BytesValue),
 		NodeRecord:    collections.NewMap(sb, types.NodeRecordKey, "nodeRecord", collections.Uint64Key, codec.CollValue[types.NodeRecord](cdc)),
+		RoundBudget:   collections.NewMap(sb, types.RoundBudgetKey, "roundBudget", collections.Uint64Key, collections.Uint64Value),
+		RoundWeight:   collections.NewMap(sb, types.RoundWeightKey, "roundWeight", collections.Uint64Key, collections.Uint64Value),
+		RewardOwed:    collections.NewItem(sb, types.RewardOwedKey, "rewardOwed", collections.Uint64Value),
 	}
 	schema, err := sb.Build()
 	if err != nil {

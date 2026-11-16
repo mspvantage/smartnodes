@@ -20,6 +20,9 @@ type RegistryKeeper interface {
 	// SlashNode burns up to amount from a node's bond and returns what was
 	// burned.
 	SlashNode(ctx context.Context, id uint64, amount math.Int) (math.Int, error)
+	// MinBondFor returns the minimum bond of a tier. A node's reward cap is
+	// sized from it.
+	MinBondFor(ctx context.Context, tier uint64) (uint64, error)
 }
 
 // TicketsKeeper defines what the verify module needs from the tickets module.
@@ -32,6 +35,8 @@ type TicketsKeeper interface {
 	// PayFromProberFund pays a prober from the prober fund, up to what the
 	// fund holds, and returns what was paid.
 	PayFromProberFund(ctx context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error)
+	// FundProberFund moves coins from a module account into the prober fund.
+	FundProberFund(ctx context.Context, fromModule string, amount sdk.Coin) error
 }
 
 // AuthKeeper defines the expected interface for the Auth module.
@@ -44,6 +49,8 @@ type AuthKeeper interface {
 // BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
 	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
+	// GetBalance reads what the node rewards pool holds.
+	GetBalance(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
 	// SendCoinsFromAccountToModule locks a prober bond in the verify module
 	// account.
 	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error

@@ -144,6 +144,22 @@ func (k Keeper) distributeFee(ctx context.Context, fee sdk.Coin) error {
 	return k.addProberFund(ctx, sdk.NewCoin(fee.Denom, prober))
 }
 
+// FundProberFund moves coins from another module account into the prober
+// fund. The coins and the fund's record move together, so the escrow always
+// matches the module's records.
+func (k Keeper) FundProberFund(ctx context.Context, fromModule string, amount sdk.Coin) error {
+	if err := amount.Validate(); err != nil {
+		return err
+	}
+	if !amount.IsPositive() {
+		return nil
+	}
+	if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, fromModule, types.ModuleName, sdk.NewCoins(amount)); err != nil {
+		return err
+	}
+	return k.addProberFund(ctx, amount)
+}
+
 // PayFromProberFund pays a prober out of the prober fund. It pays the
 // smaller of the amount asked for and what the fund holds in that coin, and
 // returns what was paid, which may be zero. The fund's record and the escrow

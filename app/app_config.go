@@ -81,6 +81,9 @@ var (
 		// The verify account only holds prober bonds. It needs no special
 		// rights in this version: it must never mint or stake.
 		{Account: verifymoduletypes.ModuleName},
+		// The node rewards pool only holds coins and pays them out. It needs
+		// no special rights.
+		{Account: verifymoduletypes.RewardsPoolName},
 	}
 
 	// blocked account addresses
@@ -100,6 +103,9 @@ var (
 		// Direct transfers to the verify account are refused, so its balance
 		// always equals the sum of prober bonds.
 		verifymoduletypes.ModuleName,
+		// The node rewards pool is funded at genesis or through the verify
+		// module's own funding message, never by a direct transfer.
+		verifymoduletypes.RewardsPoolName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}

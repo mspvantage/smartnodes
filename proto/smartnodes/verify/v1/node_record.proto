@@ -30,4 +30,14 @@ message NodeRecord {
   // slashed is the total bond burned for proven tampering, in the base unit
   // of the staking token.
   uint64 slashed = 12;
+  // pending_round is the last round the node earned a reward share in that
+  // has not been turned into an amount yet, or 0.
+  uint64 pending_round = 13;
+  // pending_weight is the node's weight in pending_round's budget.
+  uint64 pending_weight = 14;
+  // reward_balance is the reward the operator can claim, in the base unit of
+  // the staking token. It never expires.
+  uint64 reward_balance = 15;
+  // reward_paid is the total reward claimed so far.
+  uint64 reward_paid = 16;
 }

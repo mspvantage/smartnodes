@@ -35,6 +35,13 @@ service Msg {
 
   // Unjail defines the Unjail RPC.
   rpc Unjail(MsgUnjail) returns (MsgUnjailResponse);
+
+  // ClaimNodeReward pays a node's operator the availability reward the node
+  // has built up.
+  rpc ClaimNodeReward(MsgClaimNodeReward) returns (MsgClaimNodeRewardResponse);
+
+  // FundNodeRewards adds coins to the node rewards pool. Anyone may.
+  rpc FundNodeRewards(MsgFundNodeRewards) returns (MsgFundNodeRewardsResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -124,3 +131,27 @@ message MsgUnjail {
 
 // MsgUnjailResponse defines the MsgUnjailResponse message.
 message MsgUnjailResponse {}
+
+// MsgClaimNodeReward defines the MsgClaimNodeReward message.
+message MsgClaimNodeReward {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 node_id = 2;
+}
+
+// MsgClaimNodeRewardResponse defines the MsgClaimNodeRewardResponse message.
+message MsgClaimNodeRewardResponse {
+  // amount is what was paid, in the base unit of the staking token.
+  uint64 amount = 1;
+}
+
+// MsgFundNodeRewards defines the MsgFundNodeRewards message.
+message MsgFundNodeRewards {
+  option (cosmos.msg.v1.signer) = "sender";
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  // amount is in the base unit of the staking token.
+  uint64 amount = 2;
+}
+
+// MsgFundNodeRewardsResponse defines the MsgFundNodeRewardsResponse message.
+message MsgFundNodeRewardsResponse {}

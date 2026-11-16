@@ -43,6 +43,11 @@ service Query {
   rpc Assignment(QueryAssignmentRequest) returns (QueryAssignmentResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/assignment/{node_id}";
   }
+
+  // RewardPool returns the state of the node rewards pool.
+  rpc RewardPool(QueryRewardPoolRequest) returns (QueryRewardPoolResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/reward_pool";
+  }
 }
 // QueryParamsRequest is request type for the Query/Params RPC method.
 message QueryParamsRequest {}
@@ -116,4 +121,21 @@ message QueryAssignmentResponse {
   bool selected = 2;
   // prober_ids are the probers assigned to the node, if it is selected.
   repeated uint64 prober_ids = 3;
+}
+
+// QueryRewardPoolRequest defines the QueryRewardPoolRequest message.
+message QueryRewardPoolRequest {}
+
+// QueryRewardPoolResponse defines the QueryRewardPoolResponse message.
+// Amounts are in the base unit of the staking token.
+message QueryRewardPoolResponse {
+  // address is the pool's account address.
+  string address = 1;
+  // balance is what the pool account holds.
+  uint64 balance = 2;
+  // owed is the part of the balance already earned by nodes and waiting to
+  // be claimed.
+  uint64 owed = 3;
+  // round_budget is the current round's budget for verified nodes.
+  uint64 round_budget = 4;
 }

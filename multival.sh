@@ -142,9 +142,12 @@ for e in ev:
 
   echo "== share of rewards so far"
   TMP="$(mktemp)"
+  SNAP="$(curl -s localhost:26657/status | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["sync_info"]["latest_block_height"])')"
   for i in $(seq 0 $((N-1))); do
     VAL="$("$BIN" keys show "validator$i" --bech val -a --keyring-backend test --home "$D/validator$i")"
-    "$BIN" q distribution validator-outstanding-rewards "$VAL" --node "$RPC" -o json >> "$TMP"
+    # Every validator is read at the same block. Without this, validators
+    # read later have had more blocks to earn in and look larger.
+    "$BIN" q distribution validator-outstanding-rewards "$VAL" --node "$RPC" --height "$SNAP" -o json >> "$TMP"
     echo >> "$TMP"
   done
   python3 - "$TMP" "$STAKES" <<'PY'

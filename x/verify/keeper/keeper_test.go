@@ -49,6 +49,15 @@ func (m *mockBank) SpendableCoins(_ context.Context, addr sdk.AccAddress) sdk.Co
 	return m.accounts[string(addr)]
 }
 
+// GetBalance returns an account's balance. The node rewards pool is the only
+// module account the verify module reads this way.
+func (m *mockBank) GetBalance(_ context.Context, addr sdk.AccAddress, denom string) sdk.Coin {
+	if addr.Equals(keeper.PoolAddress()) {
+		return sdk.NewCoin(denom, m.modules[types.RewardsPoolName].AmountOf(denom))
+	}
+	return sdk.NewCoin(denom, m.accounts[string(addr)].AmountOf(denom))
+}
+
 func (m *mockBank) SendCoinsFromAccountToModule(_ context.Context, sender sdk.AccAddress, recipientModule string, amt sdk.Coins) error {
 	bal := m.accounts[string(sender)]
 	if !bal.IsAllGTE(amt) {
@@ -90,6 +99,20 @@ func (m *mockRegistry) BondDenom(context.Context) (string, error) {
 	return bondDenom, nil
 }
 
+// exitMinBond is the mock registry's minimum bond for exit nodes; entry
+// nodes use nodeBond.
+const exitMinBond = uint64(5_000_000_000)
+
+func (m *mockRegistry) MinBondFor(_ context.Context, tier uint64) (uint64, error) {
+	switch tier {
+	case registrytypes.TierEntry:
+		return nodeBond, nil
+	case registrytypes.TierExit:
+		return exitMinBond, nil
+	}
+	return 0, registrytypes.ValidateTier(tier)
+}
+
 // SlashNode burns bond like the real registry: at most what the node has.
 func (m *mockRegistry) SlashNode(_ context.Context, id uint64, amount math.Int) (math.Int, error) {
 	if m.failSlash {
@@ -114,6 +137,23 @@ type mockTickets struct {
 	// failPay makes every payment fail, to test that a failed payment
 	// cannot undo a tally.
 	failPay bool
+	// failFund makes funding the prober fund fail, to test that a failed
+	// reward budget cannot stop a round from starting.
+	failFund bool
+}
+
+// FundProberFund moves coins from a module account into the fund.
+func (m *mockTickets) FundProberFund(_ context.Context, fromModule string, amount sdk.Coin) error {
+	if m.failFund {
+		return sdkerrors.ErrInvalidRequest
+	}
+	bal := m.bank.modules[fromModule]
+	if !bal.IsAllGTE(sdk.NewCoins(amount)) {
+		return sdkerrors.ErrInsufficientFunds
+	}
+	m.bank.modules[fromModule] = bal.Sub(amount)
+	m.fund = m.fund.Add(amount.Amount)
+	return nil
 }
 
 func (m *mockTickets) PayFromProberFund(_ context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error) {
@@ -280,6 +320,33 @@ func (f *fixture) addNode(id uint64, status uint64) {
 func (f *fixture) operator() string {
 	operator, _ := f.addressCodec.BytesToString(bytes.Repeat([]byte{0xA0}, 20))
 	return operator
+}
+
+// fundPool puts coins in the node rewards pool, as genesis would.
+func (f *fixture) fundPool(amount uint64) {
+	f.bank.modules[types.RewardsPoolName] = f.bank.modules[types.RewardsPoolName].Add(coin(amount))
+}
+
+func (f *fixture) poolBalance() math.Int {
+	return f.bank.modules[types.RewardsPoolName].AmountOf(bondDenom)
+}
+
+// requirePoolSolvent checks the two rules the reward pool rests on: the
+// total owed equals the sum of the nodes' unclaimed balances, and the pool
+// account holds at least that much.
+func (f *fixture) requirePoolSolvent(t *testing.T) {
+	t.Helper()
+	owed, err := f.keeper.RewardOwed.Get(f.ctx)
+	if err != nil {
+		owed = 0
+	}
+	var sum uint64
+	require.NoError(t, f.keeper.NodeRecord.Walk(f.ctx, nil, func(_ uint64, rec types.NodeRecord) (bool, error) {
+		sum += rec.RewardBalance
+		return false, nil
+	}))
+	require.Equal(t, sum, owed, "owed total does not match the nodes' balances")
+	require.True(t, f.poolBalance().GTE(math.NewIntFromUint64(owed)), "pool holds %s but owes %d", f.poolBalance(), owed)
 }
 
 // nodeBondLeft returns what is left of a test node's bond.

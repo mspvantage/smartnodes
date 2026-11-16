@@ -9,6 +9,11 @@ const (
 	// StoreKey defines the primary module store key
 	StoreKey = ModuleName
 
+	// RewardsPoolName is the module account that holds the node rewards
+	// pool. It is separate from the account that holds prober bonds, so each
+	// can be checked against its own records.
+	RewardsPoolName = "verify_node_rewards"
+
 	// GovModuleName duplicates the gov module's name to avoid a dependency with x/gov.
 	// It should be synced with the gov module's name if it is ever changed.
 	// See: https://github.com/cosmos/cosmos-sdk/blob/v0.52.0-beta.2/x/gov/types/keys.go#L9
@@ -49,4 +54,12 @@ var (
 	ReportKey = collections.NewPrefix("report/")
 	// NodeRecordKey maps a node id to its verification record.
 	NodeRecordKey = collections.NewPrefix("nodeRecord/")
+	// RoundBudgetKey maps a round to its reward budget for verified nodes.
+	RoundBudgetKey = collections.NewPrefix("reward/budget/")
+	// RoundWeightKey maps a round to the total weight of the nodes that
+	// earned a share of its budget.
+	RoundWeightKey = collections.NewPrefix("reward/weight/")
+	// RewardOwedKey holds the total of all rewards earned and not yet
+	// claimed.
+	RewardOwedKey = collections.NewPrefix("reward/owed/")
 )

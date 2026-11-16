@@ -95,6 +95,16 @@ func (k Keeper) BondDenom(ctx context.Context) (string, error) {
 	return k.stakingKeeper.BondDenom(ctx)
 }
 
+// MinBondFor returns the minimum bond of a tier. The verification module
+// sizes a node's reward cap from it.
+func (k Keeper) MinBondFor(ctx context.Context, tier uint64) (uint64, error) {
+	params, err := k.Params.Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return params.MinBond(tier)
+}
+
 // TotalBonded returns the sum of all node bonds. The registry module account
 // must always hold exactly this amount of the staking token.
 func (k Keeper) TotalBonded(ctx context.Context) (math.Int, error) {

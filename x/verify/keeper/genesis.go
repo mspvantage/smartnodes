@@ -47,10 +47,19 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 		return err
 	}
 
+	// Rounds restart from 1, so a share pending in an old round can no
+	// longer be fixed and is dropped. Balances already fixed are kept, and
+	// the total owed is rebuilt from them.
+	var owed uint64
 	for _, rec := range genState.NodeRecordList {
+		rec.PendingRound, rec.PendingWeight = 0, 0
+		owed += rec.RewardBalance
 		if err := k.NodeRecord.Set(ctx, rec.NodeId, rec); err != nil {
 			return err
 		}
+	}
+	if err := k.RewardOwed.Set(ctx, owed); err != nil {
+		return err
 	}
 
 	return k.Params.Set(ctx, genState.Params)
