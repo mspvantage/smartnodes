@@ -19,7 +19,7 @@ func (k msgServer) DeregisterNode(ctx context.Context, msg *types.MsgDeregisterN
 		return nil, errorsmod.Wrap(err, "invalid operator address")
 	}
 
-	node, err := k.ownedNode(ctx, msg.Id, operator)
+	node, err := k.controlledNode(ctx, msg.Id, operator)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,13 @@ service Msg {
   // parameters. The authority defaults to the x/gov module account.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 
+  // SponsorNode registers a node for an operator with a bond lent by the
+  // sponsor pool. Only the sponsor account may send it.
+  rpc SponsorNode(MsgSponsorNode) returns (MsgSponsorNodeResponse);
+
+  // FundSponsorPool adds coins to the sponsor pool. Anyone may.
+  rpc FundSponsorPool(MsgFundSponsorPool) returns (MsgFundSponsorPoolResponse);
+
   // RegisterNode defines the RegisterNode RPC.
   rpc RegisterNode(MsgRegisterNode) returns (MsgRegisterNodeResponse);
 
@@ -112,3 +119,30 @@ message MsgWithdrawBond {
 
 // MsgWithdrawBondResponse defines the MsgWithdrawBondResponse message.
 message MsgWithdrawBondResponse {}
+
+// MsgSponsorNode defines the MsgSponsorNode message.
+message MsgSponsorNode {
+  option (cosmos.msg.v1.signer) = "sponsor";
+  string sponsor = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  // operator is the account that will run the node.
+  string operator = 2 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string endpoint = 3;
+  string pubkey = 4;
+  uint64 tier = 5;
+}
+
+// MsgSponsorNodeResponse defines the MsgSponsorNodeResponse message.
+message MsgSponsorNodeResponse {
+  uint64 id = 1;
+}
+
+// MsgFundSponsorPool defines the MsgFundSponsorPool message.
+message MsgFundSponsorPool {
+  option (cosmos.msg.v1.signer) = "sender";
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  // amount is in the base unit of the staking token.
+  uint64 amount = 2;
+}
+
+// MsgFundSponsorPoolResponse defines the MsgFundSponsorPoolResponse message.
+message MsgFundSponsorPoolResponse {}

@@ -15,6 +15,12 @@ var (
 	DefaultMinBondExit uint64 = 5_000_000_000
 	// DefaultUnbondingSeconds is 21 days, matching the staking unbonding time.
 	DefaultUnbondingSeconds uint64 = 21 * 24 * 60 * 60
+	// DefaultSponsor is empty: sponsored bonds are off until governance
+	// names a sponsor account.
+	DefaultSponsor = ""
+	// DefaultMaxSponsoredNodes caps how many nodes may hold a sponsored bond
+	// at once.
+	DefaultMaxSponsoredNodes uint64 = 500
 )
 
 const (
@@ -36,6 +42,9 @@ func NewParams(
 		MinBondEntry:     minBondEntry,
 		MinBondExit:      minBondExit,
 		UnbondingSeconds: unbondingSeconds,
+
+		Sponsor:           DefaultSponsor,
+		MaxSponsoredNodes: DefaultMaxSponsoredNodes,
 	}
 }
 

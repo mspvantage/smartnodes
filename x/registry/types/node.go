@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	errorsmod "cosmossdk.io/errors"
+	"cosmossdk.io/math"
 )
 
 // Node tiers. The tier decides the minimum bond and, in clients, the role a
@@ -102,6 +103,10 @@ func (n Node) ValidateBasic() error {
 	}
 	if err := n.Bond.Validate(); err != nil {
 		return errorsmod.Wrap(ErrInvalidBond, err.Error())
+	}
+	// The sponsored part is part of the bond, never more than it.
+	if n.Bond.Amount.IsNil() || math.NewIntFromUint64(n.Sponsored).GT(n.Bond.Amount) {
+		return errorsmod.Wrap(ErrInvalidBond, "sponsored amount is larger than the bond")
 	}
 	switch n.Status {
 	case StatusActive:

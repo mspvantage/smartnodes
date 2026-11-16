@@ -31,6 +31,9 @@ type BankKeeper interface {
 	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 	// SendCoinsFromModuleToAccount returns a bond after unbonding.
 	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
+	// SendCoinsFromModuleToModule lends a bond from the sponsor pool to the
+	// registry module account, and returns it when the node leaves.
+	SendCoinsFromModuleToModule(ctx context.Context, senderModule, recipientModule string, amt sdk.Coins) error
 	// BurnCoins destroys slashed bond held by the registry module account.
 	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 }

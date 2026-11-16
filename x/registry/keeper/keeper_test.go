@@ -63,6 +63,16 @@ func (m *mockBank) SendCoinsFromModuleToAccount(_ context.Context, senderModule 
 	return nil
 }
 
+func (m *mockBank) SendCoinsFromModuleToModule(_ context.Context, senderModule, recipientModule string, amt sdk.Coins) error {
+	bal := m.modules[senderModule]
+	if !bal.IsAllGTE(amt) {
+		return sdkerrors.ErrInsufficientFunds
+	}
+	m.modules[senderModule] = bal.Sub(amt...)
+	m.modules[recipientModule] = m.modules[recipientModule].Add(amt...)
+	return nil
+}
+
 func (m *mockBank) BurnCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
 	bal := m.modules[moduleName]
 	if !bal.IsAllGTE(amt) {

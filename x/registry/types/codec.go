@@ -8,6 +8,11 @@ import (
 
 func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgSponsorNode{},
+		&MsgFundSponsorPool{},
+	)
+
+	registrar.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgWithdrawBond{},
 	)
 

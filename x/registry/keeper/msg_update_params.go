@@ -23,6 +23,12 @@ func (k msgServer) UpdateParams(ctx context.Context, req *types.MsgUpdateParams)
 	if err := req.Params.Validate(); err != nil {
 		return nil, err
 	}
+	// The sponsor, if set, must be a readable address.
+	if req.Params.Sponsor != "" {
+		if _, err := k.addressCodec.StringToBytes(req.Params.Sponsor); err != nil {
+			return nil, errorsmod.Wrapf(types.ErrInvalidParams, "sponsor address: %s", err.Error())
+		}
+	}
 
 	if err := k.Params.Set(ctx, req.Params); err != nil {
 		return nil, err

@@ -40,6 +40,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Skip:      true, // skipped because authority gated
 				},
 				{
+					RpcMethod:      "SponsorNode",
+					Use:            "sponsor-node [operator] [endpoint] [pubkey] [tier]",
+					Short:          "Register a node for an operator with a bond lent by the sponsor pool; only the sponsor account may",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "operator"}, {ProtoField: "endpoint"}, {ProtoField: "pubkey"}, {ProtoField: "tier"}},
+				},
+				{
+					RpcMethod:      "FundSponsorPool",
+					Use:            "fund-sponsor-pool [amount]",
+					Short:          "Add coins to the sponsor pool; the amount is in the base unit of the staking token",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "amount"}},
+				},
+				{
 					RpcMethod:      "RegisterNode",
 					Use:            "register-node [endpoint] [pubkey] [tier] [bond]",
 					Short:          "Send a register-node tx",

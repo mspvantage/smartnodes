@@ -72,6 +72,9 @@ var (
 		// The registry account only holds node bonds and burns slashed bond.
 		// It must never be able to mint.
 		{Account: registrymoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
+		// The sponsor pool only holds coins to lend as node bonds. It needs
+		// no special rights.
+		{Account: registrymoduletypes.SponsorPoolName},
 		// The tickets account only holds escrowed payments. It needs no
 		// special rights: it must never mint, burn or stake.
 		{Account: ticketsmoduletypes.ModuleName},
@@ -96,6 +99,9 @@ var (
 		// Direct transfers to the registry account are refused, so its balance
 		// always equals the sum of node bonds.
 		registrymoduletypes.ModuleName,
+		// The sponsor pool is funded at genesis or through the registry's
+		// own funding message, never by a direct transfer.
+		registrymoduletypes.SponsorPoolName,
 		// Direct transfers to the tickets escrow are refused too, so its
 		// balance always matches what the module's records say it holds.
 		ticketsmoduletypes.ModuleName,

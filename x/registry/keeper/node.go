@@ -23,11 +23,16 @@ const (
 	EventTypeWithdrawBond   = "registry_withdraw_bond"
 	EventTypeSlashNode      = "registry_slash_node"
 
-	AttributeKeyNodeID       = "node_id"
-	AttributeKeyOperator     = "operator"
-	AttributeKeyTier         = "tier"
-	AttributeKeyAmount       = "amount"
-	AttributeKeyUnbondingEnd = "unbonding_end"
+	AttributeKeyNodeID         = "node_id"
+	AttributeKeyOperator       = "operator"
+	AttributeKeyTier           = "tier"
+	AttributeKeyAmount         = "amount"
+	AttributeKeyUnbondingEnd   = "unbonding_end"
+	AttributeKeyReturnedToPool = "returned_to_sponsor_pool"
+	AttributeKeySponsored      = "sponsored"
+
+	EventTypeSponsorNode     = "registry_sponsor_node"
+	EventTypeFundSponsorPool = "registry_fund_sponsor_pool"
 )
 
 // blockUnix returns the current block time as Unix seconds. Block time comes
@@ -141,10 +146,89 @@ func (k Keeper) SlashNode(ctx context.Context, id uint64, amount math.Int) (math
 		return math.ZeroInt(), err
 	}
 	node.Bond = node.Bond.Sub(burnCoin)
+	// A slash burns the operator's own part of the bond first. Only once
+	// that is gone does it eat into the sponsored part.
+	if left := node.Bond.Amount; math.NewIntFromUint64(node.Sponsored).GT(left) {
+		hadSponsorship := node.Sponsored > 0
+		node.Sponsored = left.Uint64()
+		if hadSponsorship && node.Sponsored == 0 {
+			if err := k.addSponsoredCount(ctx, -1); err != nil {
+				return math.ZeroInt(), err
+			}
+		}
+	}
 	if err := k.Node.Set(ctx, id, node); err != nil {
 		return math.ZeroInt(), err
 	}
 
 	k.emit(ctx, EventTypeSlashNode, id, sdk.NewAttribute(AttributeKeyAmount, burnCoin.String()))
 	return burn, nil
+}
+
+// sponsoredCount returns how many nodes currently hold a sponsored bond.
+func (k Keeper) sponsoredCount(ctx context.Context) (uint64, error) {
+	n, err := k.SponsoredCount.Get(ctx)
+	if err != nil {
+		if errors.Is(err, collections.ErrNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return n, nil
+}
+
+// addSponsoredCount moves the count up or down by one, never below zero.
+func (k Keeper) addSponsoredCount(ctx context.Context, delta int) error {
+	n, err := k.sponsoredCount(ctx)
+	if err != nil {
+		return err
+	}
+	switch {
+	case delta > 0:
+		n++
+	case delta < 0 && n > 0:
+		n--
+	}
+	return k.SponsoredCount.Set(ctx, n)
+}
+
+// sponsorAddress returns the sponsor account, or nil if sponsorship is off.
+func (k Keeper) sponsorAddress(ctx context.Context) ([]byte, error) {
+	params, err := k.Params.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if params.Sponsor == "" {
+		return nil, nil
+	}
+	return k.addressCodec.StringToBytes(params.Sponsor)
+}
+
+// controlledNode loads a node the signer may take out of service: its
+// operator always may, and the sponsor account may if the node still holds a
+// sponsored bond. The sponsor needs this to recover a bond from a node whose
+// operator has walked away. The bond itself always goes back to where it
+// came from, whoever asks.
+func (k Keeper) controlledNode(ctx context.Context, id uint64, signer []byte) (types.Node, error) {
+	node, err := k.GetNode(ctx, id)
+	if err != nil {
+		return types.Node{}, err
+	}
+	owner, err := k.addressCodec.StringToBytes(node.Operator)
+	if err != nil {
+		return types.Node{}, errorsmod.Wrap(types.ErrInvalidNode, "stored operator address is invalid")
+	}
+	if bytes.Equal(owner, signer) {
+		return node, nil
+	}
+	if node.Sponsored > 0 {
+		sponsor, err := k.sponsorAddress(ctx)
+		if err != nil {
+			return types.Node{}, err
+		}
+		if sponsor != nil && bytes.Equal(sponsor, signer) {
+			return node, nil
+		}
+	}
+	return types.Node{}, errorsmod.Wrapf(types.ErrNotOperator, "node %d", id)
 }

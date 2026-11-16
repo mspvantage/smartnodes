@@ -28,6 +28,8 @@ type Keeper struct {
 	Node          collections.Map[uint64, types.Node]
 	// NodeByPubkey maps a node public key to its node id.
 	NodeByPubkey collections.Map[string, uint64]
+	// SponsoredCount is how many nodes currently hold a sponsored bond.
+	SponsoredCount collections.Item[uint64]
 }
 
 func NewKeeper(
@@ -57,6 +59,8 @@ func NewKeeper(
 		Node:          collections.NewMap(sb, types.NodeKey, "node", collections.Uint64Key, codec.CollValue[types.Node](cdc)),
 		NodeSeq:       collections.NewSequence(sb, types.NodeCountKey, "nodeSequence"),
 		NodeByPubkey:  collections.NewMap(sb, types.NodeByPubkeyKey, "nodeByPubkey", collections.StringKey, collections.Uint64Value),
+
+		SponsoredCount: collections.NewItem(sb, types.SponsoredCountKey, "sponsoredCount", collections.Uint64Value),
 	}
 	schema, err := sb.Build()
 	if err != nil {

@@ -14,4 +14,10 @@ message Params {
   uint64 min_bond_entry = 1;
   uint64 min_bond_exit = 2;
   uint64 unbonding_seconds = 3;
+  // sponsor is the one account allowed to register sponsored nodes, whose
+  // bond is lent by the sponsor pool. Empty switches sponsorship off.
+  string sponsor = 4;
+  // max_sponsored_nodes caps how many nodes may hold a sponsored bond at
+  // once.
+  uint64 max_sponsored_nodes = 5;
 }

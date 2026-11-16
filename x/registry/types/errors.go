@@ -24,4 +24,8 @@ var (
 	ErrInvalidParams      = errors.Register(ModuleName, 1113, "invalid module parameters")
 	ErrNothingToUpdate    = errors.Register(ModuleName, 1114, "no change requested")
 	ErrInvalidSlashAmount = errors.Register(ModuleName, 1115, "invalid slash amount")
+	ErrSponsorshipOff     = errors.Register(ModuleName, 1116, "sponsored bonds are switched off")
+	ErrNotSponsor         = errors.Register(ModuleName, 1117, "signer is not the sponsor account")
+	ErrSponsorLimit       = errors.Register(ModuleName, 1118, "the limit of sponsored nodes has been reached")
+	ErrInvalidAmount      = errors.Register(ModuleName, 1119, "invalid amount")
 )

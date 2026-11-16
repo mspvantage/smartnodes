@@ -631,6 +631,220 @@ func (m *MsgWithdrawBondResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MsgWithdrawBondResponse proto.InternalMessageInfo
 
+// MsgSponsorNode defines the MsgSponsorNode message.
+type MsgSponsorNode struct {
+	Sponsor string `protobuf:"bytes,1,opt,name=sponsor,proto3" json:"sponsor,omitempty"`
+	// operator is the account that will run the node.
+	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
+	Endpoint string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Pubkey   string `protobuf:"bytes,4,opt,name=pubkey,proto3" json:"pubkey,omitempty"`
+	Tier     uint64 `protobuf:"varint,5,opt,name=tier,proto3" json:"tier,omitempty"`
+}
+
+func (m *MsgSponsorNode) Reset()         { *m = MsgSponsorNode{} }
+func (m *MsgSponsorNode) String() string { return proto.CompactTextString(m) }
+func (*MsgSponsorNode) ProtoMessage()    {}
+func (*MsgSponsorNode) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d3dfb29c3457807d, []int{12}
+}
+func (m *MsgSponsorNode) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSponsorNode) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSponsorNode.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSponsorNode) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSponsorNode.Merge(m, src)
+}
+func (m *MsgSponsorNode) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSponsorNode) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSponsorNode.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSponsorNode proto.InternalMessageInfo
+
+func (m *MsgSponsorNode) GetSponsor() string {
+	if m != nil {
+		return m.Sponsor
+	}
+	return ""
+}
+
+func (m *MsgSponsorNode) GetOperator() string {
+	if m != nil {
+		return m.Operator
+	}
+	return ""
+}
+
+func (m *MsgSponsorNode) GetEndpoint() string {
+	if m != nil {
+		return m.Endpoint
+	}
+	return ""
+}
+
+func (m *MsgSponsorNode) GetPubkey() string {
+	if m != nil {
+		return m.Pubkey
+	}
+	return ""
+}
+
+func (m *MsgSponsorNode) GetTier() uint64 {
+	if m != nil {
+		return m.Tier
+	}
+	return 0
+}
+
+// MsgSponsorNodeResponse defines the MsgSponsorNodeResponse message.
+type MsgSponsorNodeResponse struct {
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *MsgSponsorNodeResponse) Reset()         { *m = MsgSponsorNodeResponse{} }
+func (m *MsgSponsorNodeResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgSponsorNodeResponse) ProtoMessage()    {}
+func (*MsgSponsorNodeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d3dfb29c3457807d, []int{13}
+}
+func (m *MsgSponsorNodeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSponsorNodeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSponsorNodeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSponsorNodeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSponsorNodeResponse.Merge(m, src)
+}
+func (m *MsgSponsorNodeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSponsorNodeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSponsorNodeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSponsorNodeResponse proto.InternalMessageInfo
+
+func (m *MsgSponsorNodeResponse) GetId() uint64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+// MsgFundSponsorPool defines the MsgFundSponsorPool message.
+type MsgFundSponsorPool struct {
+	Sender string `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`
+	// amount is in the base unit of the staking token.
+	Amount uint64 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+}
+
+func (m *MsgFundSponsorPool) Reset()         { *m = MsgFundSponsorPool{} }
+func (m *MsgFundSponsorPool) String() string { return proto.CompactTextString(m) }
+func (*MsgFundSponsorPool) ProtoMessage()    {}
+func (*MsgFundSponsorPool) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d3dfb29c3457807d, []int{14}
+}
+func (m *MsgFundSponsorPool) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgFundSponsorPool) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgFundSponsorPool.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgFundSponsorPool) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgFundSponsorPool.Merge(m, src)
+}
+func (m *MsgFundSponsorPool) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgFundSponsorPool) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgFundSponsorPool.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgFundSponsorPool proto.InternalMessageInfo
+
+func (m *MsgFundSponsorPool) GetSender() string {
+	if m != nil {
+		return m.Sender
+	}
+	return ""
+}
+
+func (m *MsgFundSponsorPool) GetAmount() uint64 {
+	if m != nil {
+		return m.Amount
+	}
+	return 0
+}
+
+// MsgFundSponsorPoolResponse defines the MsgFundSponsorPoolResponse message.
+type MsgFundSponsorPoolResponse struct {
+}
+
+func (m *MsgFundSponsorPoolResponse) Reset()         { *m = MsgFundSponsorPoolResponse{} }
+func (m *MsgFundSponsorPoolResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgFundSponsorPoolResponse) ProtoMessage()    {}
+func (*MsgFundSponsorPoolResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d3dfb29c3457807d, []int{15}
+}
+func (m *MsgFundSponsorPoolResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgFundSponsorPoolResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgFundSponsorPoolResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgFundSponsorPoolResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgFundSponsorPoolResponse.Merge(m, src)
+}
+func (m *MsgFundSponsorPoolResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgFundSponsorPoolResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgFundSponsorPoolResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgFundSponsorPoolResponse proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*MsgUpdateParams)(nil), "smartnodes.registry.v1.MsgUpdateParams")
 	proto.RegisterType((*MsgUpdateParamsResponse)(nil), "smartnodes.registry.v1.MsgUpdateParamsResponse")
@@ -644,56 +858,68 @@ func init() {
 	proto.RegisterType((*MsgDeregisterNodeResponse)(nil), "smartnodes.registry.v1.MsgDeregisterNodeResponse")
 	proto.RegisterType((*MsgWithdrawBond)(nil), "smartnodes.registry.v1.MsgWithdrawBond")
 	proto.RegisterType((*MsgWithdrawBondResponse)(nil), "smartnodes.registry.v1.MsgWithdrawBondResponse")
+	proto.RegisterType((*MsgSponsorNode)(nil), "smartnodes.registry.v1.MsgSponsorNode")
+	proto.RegisterType((*MsgSponsorNodeResponse)(nil), "smartnodes.registry.v1.MsgSponsorNodeResponse")
+	proto.RegisterType((*MsgFundSponsorPool)(nil), "smartnodes.registry.v1.MsgFundSponsorPool")
+	proto.RegisterType((*MsgFundSponsorPoolResponse)(nil), "smartnodes.registry.v1.MsgFundSponsorPoolResponse")
 }
 
 func init() { proto.RegisterFile("smartnodes/registry/v1/tx.proto", fileDescriptor_d3dfb29c3457807d) }
 
 var fileDescriptor_d3dfb29c3457807d = []byte{
-	// 696 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x55, 0x4f, 0x6f, 0xd3, 0x3c,
-	0x18, 0x6f, 0xba, 0xac, 0xef, 0xfa, 0xbc, 0xdb, 0x5e, 0x2d, 0xda, 0xbb, 0xb5, 0x41, 0xca, 0xa6,
-	0xa2, 0x89, 0xad, 0xd2, 0x12, 0x75, 0x43, 0x80, 0x76, 0x5b, 0xe1, 0x86, 0x8a, 0x50, 0x10, 0x42,
-	0x70, 0x41, 0xce, 0x6c, 0xd2, 0x08, 0x25, 0x8e, 0x6c, 0xb7, 0xac, 0x37, 0xc4, 0x91, 0x13, 0x47,
-	0xc4, 0x27, 0xe0, 0xb8, 0x03, 0x9f, 0x01, 0xed, 0x38, 0xc1, 0x85, 0x13, 0x42, 0xdb, 0x61, 0x9f,
-	0x81, 0x1b, 0xaa, 0xe3, 0xa6, 0x69, 0xe8, 0xba, 0x4a, 0xdb, 0xa5, 0xaa, 0xfd, 0xfc, 0xec, 0xdf,
-	0x1f, 0x3f, 0x8e, 0x61, 0x8d, 0x87, 0x88, 0x89, 0x88, 0x62, 0xc2, 0x1d, 0x46, 0xfc, 0x80, 0x0b,
-	0xd6, 0x73, 0xba, 0x0d, 0x47, 0x1c, 0xda, 0x31, 0xa3, 0x82, 0x1a, 0x2b, 0x43, 0x80, 0x3d, 0x00,
-	0xd8, 0xdd, 0x86, 0xb9, 0x84, 0xc2, 0x20, 0xa2, 0x8e, 0xfc, 0x4d, 0xa0, 0xa6, 0x75, 0x40, 0x79,
-	0x48, 0xb9, 0xe3, 0x21, 0x4e, 0x9c, 0x6e, 0xc3, 0x23, 0x02, 0x35, 0x9c, 0x03, 0x1a, 0x44, 0xaa,
-	0xbe, 0xaa, 0xea, 0x21, 0xf7, 0xfb, 0x14, 0x21, 0xf7, 0x55, 0xa1, 0x9a, 0x14, 0x5e, 0xca, 0x91,
-	0x93, 0x0c, 0x54, 0x69, 0xd9, 0xa7, 0x3e, 0x4d, 0xe6, 0xfb, 0xff, 0xd4, 0xec, 0xcd, 0x0b, 0x54,
-	0xc7, 0x88, 0xa1, 0x50, 0x2d, 0xad, 0x7d, 0xd5, 0xe0, 0xbf, 0x16, 0xf7, 0x9f, 0xc6, 0x18, 0x09,
-	0xf2, 0x58, 0x56, 0x8c, 0x3b, 0x50, 0x46, 0x1d, 0xd1, 0xa6, 0x2c, 0x10, 0xbd, 0x8a, 0xb6, 0xae,
-	0x6d, 0x96, 0x9b, 0x95, 0x6f, 0x5f, 0xb6, 0x97, 0x15, 0xe7, 0x3e, 0xc6, 0x8c, 0x70, 0xfe, 0x44,
-	0xb0, 0x20, 0xf2, 0xdd, 0x21, 0xd4, 0xd8, 0x87, 0x52, 0xb2, 0x77, 0xa5, 0xb8, 0xae, 0x6d, 0xfe,
-	0xbb, 0x63, 0xd9, 0xe3, 0x63, 0xb1, 0x13, 0x9e, 0x66, 0xf9, 0xf8, 0xe7, 0x5a, 0xe1, 0xf3, 0xf9,
-	0x51, 0x5d, 0x73, 0xd5, 0xc2, 0xbd, 0x7b, 0xef, 0xce, 0x8f, 0xea, 0xc3, 0x2d, 0xdf, 0x9f, 0x1f,
-	0xd5, 0x37, 0x32, 0x36, 0x0e, 0x87, 0x46, 0x72, 0xa2, 0x6b, 0x55, 0x58, 0xcd, 0x4d, 0xb9, 0x84,
-	0xc7, 0x34, 0xe2, 0xa4, 0xf6, 0x3d, 0xf1, 0xe8, 0xca, 0xa5, 0x84, 0x3d, 0xa2, 0x98, 0x18, 0xb7,
-	0x61, 0x8e, 0xc6, 0x84, 0x21, 0x41, 0xd9, 0xa5, 0x16, 0x53, 0xa4, 0x61, 0xc2, 0x1c, 0x89, 0x70,
-	0x4c, 0x83, 0x48, 0x48, 0x8f, 0x65, 0x37, 0x1d, 0x1b, 0x2b, 0x50, 0x8a, 0x3b, 0xde, 0x6b, 0xd2,
-	0xab, 0xcc, 0xc8, 0x8a, 0x1a, 0x19, 0x06, 0xe8, 0x22, 0x20, 0xac, 0xa2, 0xaf, 0x6b, 0x9b, 0xba,
-	0x2b, 0xff, 0x1b, 0xbb, 0xa0, 0x7b, 0x34, 0xc2, 0x95, 0x59, 0x99, 0x53, 0xd5, 0x56, 0xb4, 0xfd,
-	0x9e, 0xb0, 0x55, 0x4f, 0xd8, 0xf7, 0x69, 0x10, 0x35, 0xf5, 0x7e, 0x44, 0xae, 0x04, 0xef, 0x2d,
-	0xf4, 0xb3, 0x49, 0xb5, 0xd4, 0xb6, 0xa4, 0xe1, 0xac, 0xa9, 0x81, 0x61, 0x63, 0x11, 0x8a, 0x01,
-	0x96, 0xb6, 0x74, 0xb7, 0x18, 0xe0, 0xda, 0x47, 0x0d, 0x16, 0xd2, 0x70, 0xae, 0x60, 0x3f, 0xd9,
-	0xb7, 0x38, 0xd8, 0x77, 0x24, 0x8e, 0x99, 0x0b, 0xe3, 0xd0, 0xb3, 0x71, 0xe4, 0x5d, 0xac, 0xc2,
-	0xff, 0x23, 0xca, 0xd2, 0x43, 0xfb, 0xa4, 0x01, 0xb4, 0xb8, 0xbf, 0x8f, 0x71, 0x93, 0x46, 0xf8,
-	0x9a, 0x04, 0xdf, 0x85, 0x12, 0x0a, 0x69, 0x47, 0xc9, 0x9d, 0x22, 0x79, 0x05, 0xcf, 0xab, 0x5e,
-	0x06, 0x63, 0xa8, 0x2d, 0x95, 0xdc, 0x86, 0xa5, 0x16, 0xf7, 0x1f, 0x10, 0x76, 0xf5, 0x46, 0xcb,
-	0x09, 0xcf, 0xf3, 0xdf, 0x80, 0xea, 0x5f, 0x4c, 0xa9, 0x8c, 0x57, 0xb2, 0xdb, 0x9f, 0x05, 0xa2,
-	0x8d, 0x19, 0x7a, 0x73, 0x7d, 0xe9, 0xe5, 0x45, 0x24, 0x37, 0x2e, 0xcb, 0x33, 0x90, 0xb0, 0xf3,
-	0x5b, 0x87, 0x99, 0x16, 0xf7, 0x8d, 0x36, 0xcc, 0x8f, 0x7c, 0x59, 0x6e, 0x5d, 0xf4, 0x45, 0xc8,
-	0x5d, 0x5d, 0xd3, 0x99, 0x12, 0x98, 0xb6, 0x7c, 0x1b, 0xe6, 0x47, 0xee, 0xf7, 0x24, 0xa6, 0x2c,
-	0x70, 0x22, 0xd3, 0xd8, 0xcb, 0xe5, 0x01, 0x64, 0x2e, 0xd2, 0xc6, 0xa5, 0x42, 0x25, 0xcb, 0xf6,
-	0x54, 0xb0, 0x94, 0xe3, 0x39, 0xfc, 0x33, 0x68, 0xfc, 0xda, 0x84, 0x95, 0x0a, 0x63, 0xd6, 0x2f,
-	0xc7, 0xa4, 0x5b, 0x47, 0xb0, 0x98, 0xeb, 0xd0, 0xad, 0x09, 0xab, 0x47, 0xa1, 0x66, 0x63, 0x6a,
-	0x68, 0xf6, 0x60, 0x46, 0x5a, 0x71, 0xd2, 0xc1, 0x64, 0x81, 0x13, 0x0f, 0x66, 0x5c, 0xd3, 0x99,
-	0xb3, 0x6f, 0xfb, 0x4f, 0x49, 0xf3, 0xe1, 0xf1, 0xa9, 0xa5, 0x9d, 0x9c, 0x5a, 0xda, 0xaf, 0x53,
-	0x4b, 0xfb, 0x70, 0x66, 0x15, 0x4e, 0xce, 0xac, 0xc2, 0x8f, 0x33, 0xab, 0xf0, 0xa2, 0xe1, 0x07,
-	0xa2, 0xdd, 0xf1, 0xec, 0x03, 0x1a, 0x3a, 0x21, 0x8f, 0xbb, 0x28, 0x12, 0xc8, 0x27, 0xce, 0xf8,
-	0xf7, 0x45, 0xf4, 0x62, 0xc2, 0xbd, 0x92, 0x7c, 0x25, 0x77, 0xff, 0x04, 0x00, 0x00, 0xff, 0xff,
-	0x52, 0xf4, 0xe9, 0xd9, 0x02, 0x08, 0x00, 0x00,
+	// 823 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xcf, 0x6f, 0xd3, 0x48,
+	0x14, 0x8e, 0xd3, 0x34, 0x6d, 0x5e, 0x7f, 0xa9, 0x56, 0xb7, 0x4d, 0xbc, 0x2b, 0xb7, 0xf2, 0xaa,
+	0xbb, 0x69, 0xa4, 0xda, 0x9b, 0x74, 0x05, 0xa8, 0xb7, 0x06, 0xc4, 0x05, 0x05, 0x55, 0xae, 0x10,
+	0x82, 0x0b, 0x72, 0xea, 0xc1, 0xb1, 0x8a, 0x3d, 0xc6, 0x33, 0x09, 0xcd, 0x0d, 0x71, 0xe4, 0xc4,
+	0x11, 0xf1, 0x17, 0x70, 0xec, 0x81, 0xbf, 0x01, 0xf5, 0x58, 0xd1, 0x0b, 0x27, 0x84, 0xda, 0x43,
+	0xff, 0x0d, 0x64, 0x7b, 0xec, 0xd8, 0x6e, 0xe2, 0x44, 0xb4, 0x97, 0xc8, 0xe3, 0xf7, 0xcd, 0xbc,
+	0xef, 0xfb, 0xde, 0x9b, 0x17, 0xc3, 0x3a, 0xb1, 0x34, 0x97, 0xda, 0x58, 0x47, 0x44, 0x71, 0x91,
+	0x61, 0x12, 0xea, 0xf6, 0x95, 0x5e, 0x5d, 0xa1, 0xc7, 0xb2, 0xe3, 0x62, 0x8a, 0xf9, 0xd5, 0x01,
+	0x40, 0x0e, 0x01, 0x72, 0xaf, 0x2e, 0x2c, 0x6b, 0x96, 0x69, 0x63, 0xc5, 0xff, 0x0d, 0xa0, 0x82,
+	0x78, 0x88, 0x89, 0x85, 0x89, 0xd2, 0xd6, 0x08, 0x52, 0x7a, 0xf5, 0x36, 0xa2, 0x5a, 0x5d, 0x39,
+	0xc4, 0xa6, 0xcd, 0xe2, 0x6b, 0x2c, 0x6e, 0x11, 0xc3, 0x4b, 0x61, 0x11, 0x83, 0x05, 0x2a, 0x41,
+	0xe0, 0x85, 0xbf, 0x52, 0x82, 0x05, 0x0b, 0xad, 0x18, 0xd8, 0xc0, 0xc1, 0x7b, 0xef, 0x89, 0xbd,
+	0xfd, 0x7b, 0x04, 0x6b, 0x47, 0x73, 0x35, 0x8b, 0x6d, 0x95, 0xbe, 0x72, 0xb0, 0xd4, 0x22, 0xc6,
+	0x13, 0x47, 0xd7, 0x28, 0xda, 0xf7, 0x23, 0xfc, 0x1d, 0x28, 0x69, 0x5d, 0xda, 0xc1, 0xae, 0x49,
+	0xfb, 0x65, 0x6e, 0x83, 0xab, 0x96, 0x9a, 0xe5, 0x6f, 0x5f, 0xb6, 0x57, 0x58, 0xce, 0x3d, 0x5d,
+	0x77, 0x11, 0x21, 0x07, 0xd4, 0x35, 0x6d, 0x43, 0x1d, 0x40, 0xf9, 0x3d, 0x28, 0x06, 0x67, 0x97,
+	0xf3, 0x1b, 0x5c, 0x75, 0xae, 0x21, 0xca, 0xc3, 0x6d, 0x91, 0x83, 0x3c, 0xcd, 0xd2, 0xe9, 0x8f,
+	0xf5, 0xdc, 0xe7, 0xab, 0x93, 0x1a, 0xa7, 0xb2, 0x8d, 0xbb, 0xf7, 0xde, 0x5d, 0x9d, 0xd4, 0x06,
+	0x47, 0xbe, 0xbf, 0x3a, 0xa9, 0x6d, 0xc6, 0x64, 0x1c, 0x0f, 0x84, 0xa4, 0x48, 0x4b, 0x15, 0x58,
+	0x4b, 0xbd, 0x52, 0x11, 0x71, 0xb0, 0x4d, 0x90, 0x74, 0x1e, 0x68, 0x54, 0xfd, 0xad, 0xc8, 0x7d,
+	0x8c, 0x75, 0xc4, 0xff, 0x0f, 0xb3, 0xd8, 0x41, 0xae, 0x46, 0xb1, 0x3b, 0x56, 0x62, 0x84, 0xe4,
+	0x05, 0x98, 0x45, 0xb6, 0xee, 0x60, 0xd3, 0xa6, 0xbe, 0xc6, 0x92, 0x1a, 0xad, 0xf9, 0x55, 0x28,
+	0x3a, 0xdd, 0xf6, 0x11, 0xea, 0x97, 0xa7, 0xfc, 0x08, 0x5b, 0xf1, 0x3c, 0x14, 0xa8, 0x89, 0xdc,
+	0x72, 0x61, 0x83, 0xab, 0x16, 0x54, 0xff, 0x99, 0xdf, 0x81, 0x42, 0x1b, 0xdb, 0x7a, 0x79, 0xda,
+	0xf7, 0xa9, 0x22, 0xb3, 0xb4, 0x5e, 0x4f, 0xc8, 0xac, 0x27, 0xe4, 0xfb, 0xd8, 0xb4, 0x9b, 0x05,
+	0xcf, 0x22, 0xd5, 0x07, 0xef, 0x2e, 0x78, 0xde, 0x44, 0x5c, 0xa4, 0x2d, 0x5f, 0x70, 0x5c, 0x54,
+	0x28, 0x98, 0x5f, 0x84, 0xbc, 0xa9, 0xfb, 0xb2, 0x0a, 0x6a, 0xde, 0xd4, 0xa5, 0x8f, 0x1c, 0x2c,
+	0x44, 0xe6, 0xdc, 0x40, 0x7e, 0x70, 0x6e, 0x3e, 0x3c, 0x37, 0x61, 0xc7, 0xd4, 0x48, 0x3b, 0x0a,
+	0x71, 0x3b, 0xd2, 0x2a, 0xd6, 0xe0, 0x8f, 0x04, 0xb3, 0xa8, 0x68, 0x9f, 0x38, 0x80, 0x16, 0x31,
+	0xf6, 0x74, 0xbd, 0x89, 0x6d, 0xfd, 0x96, 0x08, 0xdf, 0x85, 0xa2, 0x66, 0xe1, 0x2e, 0xa3, 0x3b,
+	0x81, 0xf3, 0x0c, 0x9e, 0x66, 0xbd, 0x02, 0xfc, 0x80, 0x5b, 0x44, 0xb9, 0x03, 0xcb, 0x2d, 0x62,
+	0x3c, 0x40, 0xee, 0xcd, 0x1b, 0x2d, 0x45, 0x3c, 0x9d, 0xff, 0x4f, 0xa8, 0x5c, 0xcb, 0x14, 0xd1,
+	0x78, 0xe9, 0x77, 0xfb, 0x53, 0x93, 0x76, 0x74, 0x57, 0x7b, 0x73, 0x7b, 0xee, 0xa5, 0x49, 0x04,
+	0x37, 0x2e, 0x9e, 0x27, 0xa2, 0x70, 0xc6, 0xc1, 0x62, 0x8b, 0x18, 0x07, 0xde, 0x0a, 0x07, 0x3e,
+	0x34, 0x60, 0x86, 0x04, 0xcb, 0xb1, 0x0c, 0x42, 0x60, 0x82, 0x76, 0xfe, 0xb7, 0x2e, 0xe9, 0x84,
+	0x5d, 0x19, 0x5d, 0xd2, 0xe9, 0xc1, 0x25, 0xdd, 0x9d, 0xf7, 0xe4, 0x86, 0x5c, 0xa4, 0x2a, 0xac,
+	0x26, 0x15, 0x8d, 0xbc, 0x6d, 0x47, 0x7e, 0x73, 0x3c, 0xec, 0xda, 0x3a, 0x43, 0xef, 0x63, 0xfc,
+	0x8a, 0xff, 0x0f, 0x8a, 0x04, 0xd9, 0x3a, 0x1a, 0x2f, 0x9f, 0xe1, 0x3c, 0xae, 0xac, 0x59, 0x83,
+	0x12, 0x84, 0xbd, 0x38, 0xe7, 0xf1, 0x62, 0x20, 0xe9, 0x2f, 0x10, 0xae, 0x27, 0x0b, 0xa9, 0x35,
+	0xce, 0x8b, 0x30, 0xd5, 0x22, 0x06, 0xdf, 0x81, 0xf9, 0xc4, 0x84, 0xff, 0x77, 0xd4, 0x64, 0x4e,
+	0x8d, 0x50, 0x41, 0x99, 0x10, 0x18, 0x99, 0x81, 0x60, 0x2e, 0x5e, 0xf5, 0x7f, 0x32, 0xf6, 0xc7,
+	0x70, 0x82, 0x3c, 0x19, 0x2e, 0x4a, 0xf3, 0x1a, 0x96, 0xd2, 0x06, 0xd7, 0x32, 0x8e, 0x48, 0x61,
+	0x85, 0xc6, 0xe4, 0xd8, 0x28, 0x65, 0x07, 0xe6, 0x13, 0xff, 0x20, 0x59, 0x1e, 0xc6, 0x81, 0x99,
+	0x1e, 0x0e, 0x1d, 0xdf, 0x6d, 0x80, 0xd8, 0xa8, 0xde, 0x1c, 0x5b, 0x02, 0x3f, 0xcb, 0xf6, 0x44,
+	0xb0, 0x28, 0xc7, 0x33, 0x98, 0x09, 0x47, 0xab, 0x94, 0xb1, 0x93, 0x61, 0x84, 0xda, 0x78, 0x4c,
+	0x74, 0xb4, 0x0d, 0x8b, 0xa9, 0x19, 0xb8, 0x95, 0xb1, 0x3b, 0x09, 0x15, 0xea, 0x13, 0x43, 0xe3,
+	0x85, 0x49, 0x0c, 0xbb, 0xac, 0xc2, 0xc4, 0x81, 0x99, 0x85, 0x19, 0x36, 0xd6, 0x84, 0xe9, 0xb7,
+	0xde, 0xc7, 0x4a, 0xf3, 0xd1, 0xe9, 0x85, 0xc8, 0x9d, 0x5d, 0x88, 0xdc, 0xcf, 0x0b, 0x91, 0xfb,
+	0x70, 0x29, 0xe6, 0xce, 0x2e, 0xc5, 0xdc, 0xf7, 0x4b, 0x31, 0xf7, 0xbc, 0x6e, 0x98, 0xb4, 0xd3,
+	0x6d, 0xcb, 0x87, 0xd8, 0x52, 0x2c, 0xe2, 0xf4, 0x34, 0x9b, 0x6a, 0x06, 0x52, 0x86, 0x7f, 0xc1,
+	0xd0, 0xbe, 0x83, 0x48, 0xbb, 0xe8, 0x7f, 0x87, 0xed, 0xfc, 0x0a, 0x00, 0x00, 0xff, 0xff, 0xf5,
+	0x16, 0x1d, 0x39, 0x64, 0x0a, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -711,6 +937,11 @@ type MsgClient interface {
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	// SponsorNode registers a node for an operator with a bond lent by the
+	// sponsor pool. Only the sponsor account may send it.
+	SponsorNode(ctx context.Context, in *MsgSponsorNode, opts ...grpc.CallOption) (*MsgSponsorNodeResponse, error)
+	// FundSponsorPool adds coins to the sponsor pool. Anyone may.
+	FundSponsorPool(ctx context.Context, in *MsgFundSponsorPool, opts ...grpc.CallOption) (*MsgFundSponsorPoolResponse, error)
 	// RegisterNode defines the RegisterNode RPC.
 	RegisterNode(ctx context.Context, in *MsgRegisterNode, opts ...grpc.CallOption) (*MsgRegisterNodeResponse, error)
 	// UpdateNode defines the UpdateNode RPC.
@@ -734,6 +965,24 @@ func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	out := new(MsgUpdateParamsResponse)
 	err := c.cc.Invoke(ctx, "/smartnodes.registry.v1.Msg/UpdateParams", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) SponsorNode(ctx context.Context, in *MsgSponsorNode, opts ...grpc.CallOption) (*MsgSponsorNodeResponse, error) {
+	out := new(MsgSponsorNodeResponse)
+	err := c.cc.Invoke(ctx, "/smartnodes.registry.v1.Msg/SponsorNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) FundSponsorPool(ctx context.Context, in *MsgFundSponsorPool, opts ...grpc.CallOption) (*MsgFundSponsorPoolResponse, error) {
+	out := new(MsgFundSponsorPoolResponse)
+	err := c.cc.Invoke(ctx, "/smartnodes.registry.v1.Msg/FundSponsorPool", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -790,6 +1039,11 @@ type MsgServer interface {
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	// SponsorNode registers a node for an operator with a bond lent by the
+	// sponsor pool. Only the sponsor account may send it.
+	SponsorNode(context.Context, *MsgSponsorNode) (*MsgSponsorNodeResponse, error)
+	// FundSponsorPool adds coins to the sponsor pool. Anyone may.
+	FundSponsorPool(context.Context, *MsgFundSponsorPool) (*MsgFundSponsorPoolResponse, error)
 	// RegisterNode defines the RegisterNode RPC.
 	RegisterNode(context.Context, *MsgRegisterNode) (*MsgRegisterNodeResponse, error)
 	// UpdateNode defines the UpdateNode RPC.
@@ -808,6 +1062,12 @@ type UnimplementedMsgServer struct {
 
 func (*UnimplementedMsgServer) UpdateParams(ctx context.Context, req *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (*UnimplementedMsgServer) SponsorNode(ctx context.Context, req *MsgSponsorNode) (*MsgSponsorNodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SponsorNode not implemented")
+}
+func (*UnimplementedMsgServer) FundSponsorPool(ctx context.Context, req *MsgFundSponsorPool) (*MsgFundSponsorPoolResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FundSponsorPool not implemented")
 }
 func (*UnimplementedMsgServer) RegisterNode(ctx context.Context, req *MsgRegisterNode) (*MsgRegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterNode not implemented")
@@ -843,6 +1103,42 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MsgServer).UpdateParams(ctx, req.(*MsgUpdateParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_SponsorNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSponsorNode)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SponsorNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smartnodes.registry.v1.Msg/SponsorNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SponsorNode(ctx, req.(*MsgSponsorNode))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_FundSponsorPool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgFundSponsorPool)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).FundSponsorPool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smartnodes.registry.v1.Msg/FundSponsorPool",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).FundSponsorPool(ctx, req.(*MsgFundSponsorPool))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -945,6 +1241,14 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "SponsorNode",
+			Handler:    _Msg_SponsorNode_Handler,
+		},
+		{
+			MethodName: "FundSponsorPool",
+			Handler:    _Msg_FundSponsorPool_Handler,
 		},
 		{
 			MethodName: "RegisterNode",
@@ -1377,6 +1681,148 @@ func (m *MsgWithdrawBondResponse) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *MsgSponsorNode) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSponsorNode) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSponsorNode) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Tier != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Tier))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.Pubkey) > 0 {
+		i -= len(m.Pubkey)
+		copy(dAtA[i:], m.Pubkey)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Pubkey)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Endpoint) > 0 {
+		i -= len(m.Endpoint)
+		copy(dAtA[i:], m.Endpoint)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Endpoint)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Operator) > 0 {
+		i -= len(m.Operator)
+		copy(dAtA[i:], m.Operator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Operator)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Sponsor) > 0 {
+		i -= len(m.Sponsor)
+		copy(dAtA[i:], m.Sponsor)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Sponsor)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgSponsorNodeResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSponsorNodeResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSponsorNodeResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Id != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgFundSponsorPool) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgFundSponsorPool) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgFundSponsorPool) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Amount != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Amount))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Sender) > 0 {
+		i -= len(m.Sender)
+		copy(dAtA[i:], m.Sender)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Sender)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgFundSponsorPoolResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgFundSponsorPoolResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgFundSponsorPoolResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintTx(dAtA []byte, offset int, v uint64) int {
 	offset -= sovTx(v)
 	base := offset
@@ -1552,6 +1998,71 @@ func (m *MsgWithdrawBond) Size() (n int) {
 }
 
 func (m *MsgWithdrawBondResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgSponsorNode) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Sponsor)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Operator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Endpoint)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Pubkey)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Tier != 0 {
+		n += 1 + sovTx(uint64(m.Tier))
+	}
+	return n
+}
+
+func (m *MsgSponsorNodeResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Id != 0 {
+		n += 1 + sovTx(uint64(m.Id))
+	}
+	return n
+}
+
+func (m *MsgFundSponsorPool) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Sender)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Amount != 0 {
+		n += 1 + sovTx(uint64(m.Amount))
+	}
+	return n
+}
+
+func (m *MsgFundSponsorPoolResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2676,6 +3187,423 @@ func (m *MsgWithdrawBondResponse) Unmarshal(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: MsgWithdrawBondResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgSponsorNode) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSponsorNode: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSponsorNode: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sponsor", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sponsor = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Operator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Operator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Endpoint", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Endpoint = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pubkey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Pubkey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tier", wireType)
+			}
+			m.Tier = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Tier |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgSponsorNodeResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSponsorNodeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSponsorNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgFundSponsorPool) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgFundSponsorPool: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgFundSponsorPool: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sender", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sender = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			m.Amount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Amount |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgFundSponsorPoolResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgFundSponsorPoolResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgFundSponsorPoolResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

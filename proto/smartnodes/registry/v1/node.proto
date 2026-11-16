@@ -17,4 +17,8 @@ message Node {
   cosmos.base.v1beta1.Coin bond = 6 [(gogoproto.nullable) = false];
   uint64 status = 7;
   int64 unbonding_end = 8;
+  // sponsored is the part of the bond lent by the sponsor pool, in the base
+  // unit of the staking token. It returns to the pool when the node leaves.
+  // A slash burns the operator's own part of the bond first.
+  uint64 sponsored = 9;
 }
