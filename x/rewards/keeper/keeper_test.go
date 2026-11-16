@@ -64,6 +64,10 @@ type mockStaking struct {
 	// selfShares overrides how much of a validator's stake is the operator's
 	// own, keyed by operator address.
 	selfShares map[string]int64
+	// bonded is the active validator set, and delegations every account's
+	// delegations keyed by raw account address, for governance tallies.
+	bonded      []stakingtypes.Validator
+	delegations map[string][]stakingtypes.Delegation
 }
 
 // fullSelfShares is the stake every test validator has, all of it the
@@ -91,6 +95,24 @@ func (m *mockStaking) GetDelegation(_ context.Context, _ sdk.AccAddress, valAddr
 		return stakingtypes.Delegation{}, stakingtypes.ErrNoDelegation
 	}
 	return stakingtypes.Delegation{Shares: math.LegacyNewDec(shares)}, nil
+}
+
+func (m *mockStaking) IterateBondedValidatorsByPower(_ context.Context, fn func(int64, stakingtypes.ValidatorI) bool) error {
+	for i, v := range m.bonded {
+		if fn(int64(i), v) {
+			break
+		}
+	}
+	return nil
+}
+
+func (m *mockStaking) IterateDelegations(_ context.Context, delegator sdk.AccAddress, fn func(int64, stakingtypes.DelegationI) bool) error {
+	for i, d := range m.delegations[string(delegator)] {
+		if fn(int64(i), d) {
+			break
+		}
+	}
+	return nil
 }
 
 func (m *mockStaking) GetValidator(_ context.Context, addr sdk.ValAddress) (stakingtypes.Validator, error) {
@@ -166,7 +188,7 @@ func initFixture(t *testing.T) *fixture {
 	authority := authtypes.NewModuleAddress(types.GovModuleName)
 
 	bank := newMockBank()
-	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}, byOper: map[string]stakingtypes.Validator{}, selfShares: map[string]int64{}}
+	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}, byOper: map[string]stakingtypes.Validator{}, selfShares: map[string]int64{}, delegations: map[string][]stakingtypes.Delegation{}}
 	distr := &mockDistr{
 		bank:         bank,
 		communityTax: math.LegacyNewDecWithPrec(2, 2), // 2%

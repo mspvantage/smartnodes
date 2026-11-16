@@ -53,9 +53,16 @@ cmd_up() {
   TREASURY="$("$BIN" keys show treasury -a --keyring-backend test --home "$D/validator0")"
 
   echo "== applying the economics settings to the genesis file"
-  python3 - "$D/validator0/config/genesis.json" "$TREASURY" <<'PY'
+  # NONVOTING=1 ./multival.sh up   puts validator0's own account on the
+  # non-voting list, to try the governance rule on a live network.
+  NV_ADDR=""
+  if [ -n "${NONVOTING:-}" ]; then
+    NV_ADDR="$("$BIN" keys show validator0 -a --keyring-backend test --home "$D/validator0")"
+    echo "   non-voting account: $NV_ADDR (validator0's operator)"
+  fi
+  python3 - "$D/validator0/config/genesis.json" "$TREASURY" "$NV_ADDR" <<'PY'
 import json, sys
-path, treasury = sys.argv[1], sys.argv[2]
+path, treasury, non_voting = sys.argv[1], sys.argv[2], sys.argv[3]
 g = json.load(open(path))
 s = g["app_state"]
 
@@ -73,6 +80,8 @@ s["distribution"]["params"]["community_tax"] = "0.020000000000000000"
 # so the minimum self stake for the equal share is lowered to 100 SNODE here.
 # The chain's default is 5,000 SNODE.
 s["rewards"]["params"]["equal_share_min_self_stake"] = "100000000"
+if non_voting:
+    s["rewards"]["params"]["non_voting_addresses"] = [non_voting]
 gp = s["gov"]["params"]
 gp["voting_period"] = "30s"
 gp["expedited_voting_period"] = "15s"

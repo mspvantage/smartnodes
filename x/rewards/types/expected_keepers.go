@@ -15,6 +15,11 @@ type StakingKeeper interface {
 	ConsensusAddressCodec() address.Codec
 	// ValidatorByConsAddr finds a validator from the address it signs blocks with.
 	ValidatorByConsAddr(context.Context, sdk.ConsAddress) (stakingtypes.ValidatorI, error)
+	// IterateBondedValidatorsByPower visits every validator in the active
+	// set. The governance tally starts from it.
+	IterateBondedValidatorsByPower(context.Context, func(index int64, validator stakingtypes.ValidatorI) (stop bool)) error
+	// IterateDelegations visits every delegation made by one account.
+	IterateDelegations(ctx context.Context, delegator sdk.AccAddress, fn func(index int64, delegation stakingtypes.DelegationI) (stop bool)) error
 	// ValidatorAddressCodec turns a validator's operator address into bytes.
 	ValidatorAddressCodec() address.Codec
 	// GetDelegation reads one delegation. The rewards module uses it to read

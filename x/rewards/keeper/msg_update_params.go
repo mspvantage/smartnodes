@@ -24,6 +24,17 @@ func (k msgServer) UpdateParams(ctx context.Context, req *types.MsgUpdateParams)
 		return nil, err
 	}
 
+	// The non-voting list is fixed at genesis. Governance may take addresses
+	// off it, for example when a team member's vesting has ended, but may
+	// never add one: otherwise a majority could silence anyone it chose.
+	current, err := k.Params.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !types.NonVotingOnlyShrinks(current.NonVotingAddresses, req.Params.NonVotingAddresses) {
+		return nil, types.ErrNonVotingListGrew
+	}
+
 	if err := k.Params.Set(ctx, req.Params); err != nil {
 		return nil, err
 	}

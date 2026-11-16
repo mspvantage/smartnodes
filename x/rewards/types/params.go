@@ -28,6 +28,10 @@ var DefaultMaxCommissionBps uint64 = 2_000
 // each one cost real stake of the operator's own.
 var DefaultEqualShareMinSelfStake uint64 = 5_000_000_000
 
+// MaxNonVotingAddresses bounds the non-voting list. Every governance tally
+// reads the delegations of each listed account, so the list must stay short.
+const MaxNonVotingAddresses = 200
+
 // NewParams creates a new Params instance.
 func NewParams(
 	equalShareBps uint64,
@@ -56,6 +60,19 @@ func (p Params) Validate() error {
 	if p.MaxCommissionBps < 1 || p.MaxCommissionBps > BasisPoints {
 		return errorsmod.Wrapf(ErrInvalidParams, "max_commission_bps must be 1-%d, got %d", BasisPoints, p.MaxCommissionBps)
 	}
+	if len(p.NonVotingAddresses) > MaxNonVotingAddresses {
+		return errorsmod.Wrapf(ErrInvalidParams, "%d non-voting addresses, at most %d", len(p.NonVotingAddresses), MaxNonVotingAddresses)
+	}
+	seen := make(map[string]bool, len(p.NonVotingAddresses))
+	for _, addr := range p.NonVotingAddresses {
+		if addr == "" {
+			return errorsmod.Wrap(ErrInvalidParams, "empty non-voting address")
+		}
+		if seen[addr] {
+			return errorsmod.Wrapf(ErrInvalidParams, "non-voting address %s is listed twice", addr)
+		}
+		seen[addr] = true
+	}
 
 	return nil
 }
@@ -67,4 +84,20 @@ func validateEqualShareBps(v uint64) error {
 		return errorsmod.Wrapf(ErrInvalidParams, "equal_share_bps must be 0-%d, got %d", BasisPoints, v)
 	}
 	return nil
+}
+
+// NonVotingOnlyShrinks reports whether next lists no address that current
+// does not. Removing addresses is allowed; adding one is not, so the list can
+// never be used to silence a holder after launch.
+func NonVotingOnlyShrinks(current, next []string) bool {
+	allowed := make(map[string]bool, len(current))
+	for _, addr := range current {
+		allowed[addr] = true
+	}
+	for _, addr := range next {
+		if !allowed[addr] {
+			return false
+		}
+	}
+	return true
 }

@@ -8,6 +8,7 @@ import (
 	"cosmossdk.io/depinject/appconfig"
 	"github.com/cosmos/cosmos-sdk/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/mspvantage/smartnodes/x/rewards/keeper"
@@ -47,6 +48,9 @@ type ModuleOutputs struct {
 	Module        appmodule.AppModule
 	// Hooks lets the rewards module check each new validator's commission.
 	Hooks stakingtypes.StakingHooksWrapper
+	// TallyFn replaces the governance module's vote counting with one that
+	// leaves out stake from the non-voting list.
+	TallyFn govkeeper.CalculateVoteResultsAndVotingPowerFn
 }
 
 func ProvideModule(in ModuleInputs) ModuleOutputs {
@@ -70,5 +74,6 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 		RewardsKeeper: k,
 		Module:        m,
 		Hooks:         stakingtypes.StakingHooksWrapper{StakingHooks: k.Hooks()},
+		TallyFn:       k.GovTally(),
 	}
 }

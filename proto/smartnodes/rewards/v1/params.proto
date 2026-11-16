@@ -20,4 +20,10 @@ message Params {
   // have staked with their own validator for it to receive the equal share,
   // in the base unit of the staking token. Zero means no minimum.
   uint64 equal_share_min_self_stake = 3;
+  // non_voting_addresses lists accounts whose stake does not count in
+  // governance: it cannot vote, the validators it is delegated to do not
+  // vote with it, and it is left out of the quorum. The stake still earns
+  // rewards and secures the chain. The list is set at genesis and can only
+  // shrink afterwards.
+  repeated string non_voting_addresses = 4;
 }
