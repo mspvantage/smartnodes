@@ -69,6 +69,10 @@ p["inflation_min"] = "0.020000000000000000"
 p["inflation_max"] = "0.020000000000000000"
 p["max_supply"] = "100000000000000"
 s["distribution"]["params"]["community_tax"] = "0.020000000000000000"
+# Test network only: the four validators stake 100 to 400 SNODE of their own,
+# so the minimum self stake for the equal share is lowered to 100 SNODE here.
+# The chain's default is 5,000 SNODE.
+s["rewards"]["params"]["equal_share_min_self_stake"] = "100000000"
 gp = s["gov"]["params"]
 gp["voting_period"] = "30s"
 gp["expedited_voting_period"] = "15s"

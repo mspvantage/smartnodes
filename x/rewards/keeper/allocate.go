@@ -59,8 +59,30 @@ func (k Keeper) BeginBlocker(ctx context.Context) error {
 	return nil
 }
 
+// SelfStake returns how many tokens a validator's operator has staked with
+// their own validator. Stake delegated by anyone else does not count. If it
+// cannot be read, the answer is zero.
+func (k Keeper) SelfStake(ctx context.Context, validator stakingtypes.ValidatorI) sdkmath.Int {
+	valAddr, err := k.stakingKeeper.ValidatorAddressCodec().StringToBytes(validator.GetOperator())
+	if err != nil {
+		return sdkmath.ZeroInt()
+	}
+	// An operator's account and validator addresses are the same bytes.
+	delegation, err := k.stakingKeeper.GetDelegation(ctx, sdk.AccAddress(valAddr), sdk.ValAddress(valAddr))
+	if err != nil || delegation.Shares.IsNil() || !delegation.Shares.IsPositive() {
+		return sdkmath.ZeroInt()
+	}
+	total := validator.GetDelegatorShares()
+	if total.IsNil() || !total.IsPositive() {
+		return sdkmath.ZeroInt()
+	}
+	return validator.TokensFromShares(delegation.Shares).TruncateInt()
+}
+
 // AllocateEqualShare moves the equal share out of the fee collector and
-// credits it to the validators in votes, the same amount each.
+// credits it to the eligible validators in votes, the same amount each. A
+// validator is eligible if its operator's own stake in it is at least
+// equal_share_min_self_stake.
 //
 // All arithmetic is in whole coins, so nothing is created or lost:
 //
@@ -96,6 +118,19 @@ func (k Keeper) AllocateEqualShare(ctx context.Context, votes []abci.VoteInfo) e
 			continue
 		}
 		validators = append(validators, validator)
+	}
+	// Only validators whose operator has enough of their own stake behind
+	// them receive the equal share. If none qualifies, nothing is moved and
+	// everything is paid by stake as usual.
+	if params.EqualShareMinSelfStake > 0 {
+		minimum := sdkmath.NewIntFromUint64(params.EqualShareMinSelfStake)
+		eligible := validators[:0]
+		for _, validator := range validators {
+			if k.SelfStake(ctx, validator).GTE(minimum) {
+				eligible = append(eligible, validator)
+			}
+		}
+		validators = eligible
 	}
 	count := int64(len(validators))
 	if count == 0 {

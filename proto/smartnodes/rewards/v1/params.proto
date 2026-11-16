@@ -16,4 +16,8 @@ message Params {
   // may set, in basis points. A validator can never raise its commission
   // above the maximum it set when it was created.
   uint64 max_commission_bps = 2;
+  // equal_share_min_self_stake is the least a validator's operator must
+  // have staked with their own validator for it to receive the equal share,
+  // in the base unit of the staking token. Zero means no minimum.
+  uint64 equal_share_min_self_stake = 3;
 }

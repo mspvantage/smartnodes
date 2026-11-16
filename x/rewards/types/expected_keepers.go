@@ -15,6 +15,11 @@ type StakingKeeper interface {
 	ConsensusAddressCodec() address.Codec
 	// ValidatorByConsAddr finds a validator from the address it signs blocks with.
 	ValidatorByConsAddr(context.Context, sdk.ConsAddress) (stakingtypes.ValidatorI, error)
+	// ValidatorAddressCodec turns a validator's operator address into bytes.
+	ValidatorAddressCodec() address.Codec
+	// GetDelegation reads one delegation. The rewards module uses it to read
+	// what an operator has staked with their own validator.
+	GetDelegation(ctx context.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress) (stakingtypes.Delegation, error)
 	// GetValidator reads a validator, to check a new validator's commission.
 	GetValidator(ctx context.Context, addr sdk.ValAddress) (stakingtypes.Validator, error)
 }

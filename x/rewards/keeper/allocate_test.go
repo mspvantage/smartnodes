@@ -27,7 +27,11 @@ func (f *fixture) validatorSet(powers ...int64) []abci.VoteInfo {
 	votes := make([]abci.VoteInfo, len(powers))
 	for i, power := range powers {
 		cons := []byte(fmt.Sprintf("cons-address-%02d......", i))[:20]
-		f.staking.byCons[string(cons)] = stakingtypes.Validator{OperatorAddress: fmt.Sprintf("validator-%d", i)}
+		f.staking.byCons[string(cons)] = stakingtypes.Validator{
+			OperatorAddress: fmt.Sprintf("validator-%d", i),
+			Tokens:          math.NewInt(fullSelfShares),
+			DelegatorShares: math.LegacyNewDec(fullSelfShares),
+		}
 		votes[i] = abci.VoteInfo{Validator: abci.Validator{Address: cons, Power: power}}
 	}
 	return votes

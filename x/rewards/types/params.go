@@ -18,13 +18,24 @@ var DefaultEqualShareBps uint64 = 5_000
 // maximum once, at creation, caps the commission for good.
 var DefaultMaxCommissionBps uint64 = 2_000
 
+// DefaultEqualShareMinSelfStake is the least an operator must stake with
+// their own validator for it to receive the equal share: 5,000 SNODE. It is a
+// placeholder to be set with the token-economics review.
+//
+// The equal share pays every validator the same, so without a minimum one
+// operator could run several small validators to collect several shares. The
+// chain cannot tell that two validators belong to one person, but it can make
+// each one cost real stake of the operator's own.
+var DefaultEqualShareMinSelfStake uint64 = 5_000_000_000
+
 // NewParams creates a new Params instance.
 func NewParams(
 	equalShareBps uint64,
 ) Params {
 	return Params{
-		EqualShareBps:    equalShareBps,
-		MaxCommissionBps: DefaultMaxCommissionBps,
+		EqualShareBps:          equalShareBps,
+		MaxCommissionBps:       DefaultMaxCommissionBps,
+		EqualShareMinSelfStake: DefaultEqualShareMinSelfStake,
 	}
 }
 

@@ -61,6 +61,36 @@ type mockStaking struct {
 	byCons map[string]stakingtypes.Validator
 	// byOper holds validators by operator address, for the commission check.
 	byOper map[string]stakingtypes.Validator
+	// selfShares overrides how much of a validator's stake is the operator's
+	// own, keyed by operator address.
+	selfShares map[string]int64
+}
+
+// fullSelfShares is the stake every test validator has, all of it the
+// operator's own unless a test says otherwise: 10,000 SNODE.
+const fullSelfShares = int64(10_000_000_000)
+
+// plainCodec treats an address as its own text, so tests can use readable
+// operator names.
+type plainCodec struct{}
+
+func (plainCodec) StringToBytes(text string) ([]byte, error) { return []byte(text), nil }
+func (plainCodec) BytesToString(bz []byte) (string, error)   { return string(bz), nil }
+
+func (m *mockStaking) ValidatorAddressCodec() address.Codec { return plainCodec{} }
+
+// GetDelegation returns the operator's own delegation. A validator has all
+// of its stake self-delegated unless selfShares says otherwise; a negative
+// entry means the operator has no delegation at all.
+func (m *mockStaking) GetDelegation(_ context.Context, _ sdk.AccAddress, valAddr sdk.ValAddress) (stakingtypes.Delegation, error) {
+	shares := fullSelfShares
+	if custom, ok := m.selfShares[string(valAddr)]; ok {
+		shares = custom
+	}
+	if shares < 0 {
+		return stakingtypes.Delegation{}, stakingtypes.ErrNoDelegation
+	}
+	return stakingtypes.Delegation{Shares: math.LegacyNewDec(shares)}, nil
 }
 
 func (m *mockStaking) GetValidator(_ context.Context, addr sdk.ValAddress) (stakingtypes.Validator, error) {
@@ -136,7 +166,7 @@ func initFixture(t *testing.T) *fixture {
 	authority := authtypes.NewModuleAddress(types.GovModuleName)
 
 	bank := newMockBank()
-	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}, byOper: map[string]stakingtypes.Validator{}}
+	staking := &mockStaking{byCons: map[string]stakingtypes.Validator{}, byOper: map[string]stakingtypes.Validator{}, selfShares: map[string]int64{}}
 	distr := &mockDistr{
 		bank:         bank,
 		communityTax: math.LegacyNewDecWithPrec(2, 2), // 2%

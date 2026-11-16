@@ -67,6 +67,17 @@ $BIN tx staking create-validator "$TMPHOME/validator.json" $TX 2>&1 | grep -E '^
 sleep 8
 echo "   validators now: $(count)   (want 5)"
 
+echo
+echo "== 4. The new validator has only 50 SNODE of its own stake, below this network's"
+echo "      100 SNODE minimum, so it must NOT receive the equal share"
+curl -s localhost:26657/block_results | python3 -c '
+import json,sys
+r=json.load(sys.stdin)["result"]
+ev=[e for e in (r.get("finalize_block_events") or []) if e["type"].startswith("rewards_equal_share")]
+for e in ev[-1:]:
+    a={x["key"]:x["value"] for x in e["attributes"]}
+    print("   equal share paid to", a.get("validators"), "validators   (want 4, not 5)")'
+
 rm -rf "$TMPHOME"
 echo
 echo "Finished. Copy everything above and send it back, then run ./multival.sh wipe"
