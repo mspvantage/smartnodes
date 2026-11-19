@@ -104,6 +104,8 @@ type Config struct {
 	PaidKeep time.Duration
 	// CreditLife is how long a prepaid credit lasts unused.
 	CreditLife time.Duration
+	// DNS, if set, is offered to clients as their name server.
+	DNS netip.Addr
 	// Now returns the current time. Tests replace it.
 	Now func() time.Time
 }
@@ -442,7 +444,11 @@ func (n *Node) openLocked(pub string, d time.Duration, now time.Time) control.Re
 		from = now
 	}
 	s.expires = from.Add(d)
-	return control.Reply{OK: true, TunnelIP: s.addr.String(), Expires: s.expires.Unix()}
+	reply := control.Reply{OK: true, TunnelIP: s.addr.String(), Expires: s.expires.Unix()}
+	if n.cfg.DNS.IsValid() {
+		reply.DNS = n.cfg.DNS.String()
+	}
+	return reply
 }
 
 // release frees reserved tickets that were not sent for redemption.

@@ -30,8 +30,10 @@ import (
 
 	"github.com/mspvantage/smartnodes/vpn/chain"
 	"github.com/mspvantage/smartnodes/vpn/control"
+	"github.com/mspvantage/smartnodes/vpn/dns"
 	"github.com/mspvantage/smartnodes/vpn/guard"
 	"github.com/mspvantage/smartnodes/vpn/node"
+	"github.com/mspvantage/smartnodes/vpn/nodisk"
 	"github.com/mspvantage/smartnodes/vpn/wg"
 )
 
@@ -51,16 +53,30 @@ func main() {
 	home := flag.String("home", "", "smartnodesd home folder holding that key")
 	gasPrices := flag.String("gas-prices", "0.025usnode", "gas price for redemptions")
 	maxExchanges := flag.Int("max-exchanges", 64, "most client exchanges handled at once")
+	dnsUpstream := flag.String("dns-upstream", "", "exit nodes: resolver to pass clients' name lookups to (default: the first in /etc/resolv.conf)")
+	strict := flag.Bool("strict", false, "refuse to start if this machine could write session details to disk")
 	flag.Parse()
 
+	// Before anything secret is in memory.
+	for _, p := range nodisk.Harden() {
+		log.Printf("warning: %s", p)
+	}
+	warnings := nodisk.Check(nodisk.OS{})
+	for _, w := range warnings {
+		log.Printf("warning: %s", w)
+	}
+	if *strict && len(warnings) > 0 {
+		log.Fatalf("smartnode: refusing to start with -strict until the warnings above are fixed")
+	}
+
 	if err := run(*keyFile, *nodeID, *chainID, *listen, *iface, *subnet, *session, *gather, *rpc, *binary,
-		*from, *backend, *home, *gasPrices, *maxExchanges); err != nil {
+		*from, *backend, *home, *gasPrices, *maxExchanges, *dnsUpstream); err != nil {
 		log.Fatalf("smartnode: %v", err)
 	}
 }
 
 func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, session, gather time.Duration,
-	rpc, binary, from, backend, home, gasPrices string, maxExchanges int) error {
+	rpc, binary, from, backend, home, gasPrices string, maxExchanges int, dnsUpstream string) error {
 	if os.Geteuid() != 0 {
 		return errors.New("must run as root, to create the WireGuard interface")
 	}
@@ -114,9 +130,30 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 		return fmt.Errorf("node %d has unknown tier %d", nodeID, info.Tier)
 	}
 
+	// An exit node answers its clients' name lookups on its own tunnel
+	// address, so they never leave through anyone else.
+	var upstream netip.AddrPort
+	var gateway netip.Addr
+	if role == guard.Exit {
+		if dnsUpstream != "" {
+			if upstream, err = netip.ParseAddrPort(dnsUpstream); err != nil {
+				return fmt.Errorf("-dns-upstream: %w", err)
+			}
+		} else {
+			conf, err := os.ReadFile("/etc/resolv.conf")
+			if err != nil {
+				return err
+			}
+			if upstream, err = dns.Upstream(string(conf)); err != nil {
+				return err
+			}
+		}
+		gateway = prefix.Masked().Addr().Next()
+	}
+
 	n, err := node.New(node.Config{
 		ChainID: chainID, NodeID: nodeID, Subnet: prefix, SessionLength: session,
-		RedeemMargin: time.Hour, MaxBatch: 100, Gather: gather,
+		RedeemMargin: time.Hour, MaxBatch: 100, Gather: gather, DNS: gateway,
 	}, cli, wg.Interface{Name: iface, Run: wg.Exec{}})
 	if err != nil {
 		return err
@@ -131,7 +168,7 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 
 	// The rules go in before the first client can connect. An entry node
 	// starts with no exits allowed and learns them from the registry.
-	fw := guard.Guard{Iface: iface, Run: wg.Exec{}}
+	fw := guard.Guard{Iface: iface, Run: wg.Exec{}, DNS: gateway}
 	if err := fw.Apply(role, nil); err != nil {
 		return fmt.Errorf("firewall: %w", err)
 	}
@@ -164,6 +201,16 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 
 	stop, stopNow := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stopNow()
+
+	if gateway.IsValid() {
+		if gateway != n.Address().Addr() {
+			return fmt.Errorf("internal: name server %s is not the tunnel address %s", gateway, n.Address())
+		}
+		if err := (dns.Forwarder{Listen: gateway, Upstream: upstream}).Serve(stop); err != nil {
+			return fmt.Errorf("name server: %w", err)
+		}
+		log.Printf("answering clients' name lookups on %s", gateway)
+	}
 
 	log.Printf("node %d (%s) serving on %s; public key %s; one ticket buys %s", nodeID, roleName(role), listenAddr, pub, session)
 	if role == guard.Entry {

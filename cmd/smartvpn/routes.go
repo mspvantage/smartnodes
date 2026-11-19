@@ -19,7 +19,12 @@ type state struct {
 	Default string `json:"default"`
 	// Pinned is the route added to keep reaching the entry node directly.
 	Pinned string `json:"pinned,omitempty"`
+	// Resolv is the name server file before connecting, if it was changed.
+	Resolv *string `json:"resolv,omitempty"`
 }
+
+// resolvPath is the machine's name server file.
+var resolvPath = "/etc/resolv.conf"
 
 // output runs a command and returns what it printed. Tests replace it.
 var output = func(name string, args ...string) (string, error) {
@@ -111,6 +116,11 @@ func restoreRoutes() error {
 		return fmt.Errorf("unreadable %s: %w", stateFile, err)
 	}
 	var errs []string
+	if st.Resolv != nil {
+		if err := writeInPlace(resolvPath, *st.Resolv); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
 	if st.Default != "" {
 		if err := run("ip", append([]string{"route", "replace"}, strings.Fields(st.Default)...)...); err != nil {
 			errs = append(errs, err.Error())
@@ -123,6 +133,49 @@ func restoreRoutes() error {
 		return fmt.Errorf("restoring routes: %s", strings.Join(errs, "; "))
 	}
 	return os.Remove(stateFile)
+}
+
+// setResolver points the machine's name lookups at a name server inside the
+// tunnel, keeping the old file to put back on disconnect.
+func setResolver(server string) error {
+	addr, err := netip.ParseAddr(server)
+	if err != nil || !addr.Is4() {
+		return fmt.Errorf("the node offered an unusable name server %q", server)
+	}
+	raw, err := os.ReadFile(stateFile)
+	if err != nil {
+		return err
+	}
+	var st state
+	if err := json.Unmarshal(raw, &st); err != nil {
+		return err
+	}
+	if st.Resolv == nil {
+		old, err := os.ReadFile(resolvPath)
+		if err != nil {
+			return err
+		}
+		s := string(old)
+		st.Resolv = &s
+		if err := writeState(st); err != nil {
+			return err
+		}
+	}
+	return writeInPlace(resolvPath, "# set by smartvpn; put back by 'smartvpn down'\nnameserver "+addr.String()+"\n")
+}
+
+// writeInPlace rewrites a file without replacing it, which keeps a file
+// that is mounted over, as a network space's resolv.conf is.
+func writeInPlace(path, content string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(content); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func writeState(st state) error {

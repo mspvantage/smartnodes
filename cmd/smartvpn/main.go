@@ -10,9 +10,17 @@
 // a later connect uses it with no step on the chain. Without a saved credit,
 // connect pays the exit and then waits a random time before using it.
 //
-// It must run as root, because it creates WireGuard interfaces and changes
-// routes.
+// run is the everyday command. It pays from a ticket wallet, keeps both
+// sessions renewed at independent random times, buys the next session's exit
+// credit ahead, and falls back to buying a fresh one if a saved credit is
+// refused. While connected a kill switch lets nothing out except through the
+// tunnels, blocks IPv6, and stays on if a tunnel or the program dies, until
+// 'smartvpn down'. Name lookups go to the exit's own name server.
 //
+// It must run as root, because it creates WireGuard interfaces and changes
+// routes and firewall rules.
+//
+//	smartvpn run -wallet W -entry-id 0 -entry-key K -entry-endpoint H:P -exit-id 1 -exit-key K -exit-endpoint H:P
 //	smartvpn connect -entry-id 0 -entry-key K -entry-endpoint H:P -entry-ticket T \
 //	                 -exit-id 1 -exit-key K -exit-endpoint H:P -exit-ticket T -key-id 0
 //	smartvpn connect ... -exit-credit /root/.smartvpn/credit.json
@@ -22,6 +30,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -31,10 +40,15 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/mspvantage/smartnodes/vpn/control"
+	"github.com/mspvantage/smartnodes/vpn/guard"
+	"github.com/mspvantage/smartnodes/vpn/wallet"
 	"github.com/mspvantage/smartnodes/vpn/wg"
 )
 
@@ -54,6 +68,8 @@ func main() {
 	switch os.Args[1] {
 	case "connect":
 		err = connect(os.Args[2:])
+	case "run":
+		err = runCmd(os.Args[2:])
 	case "prepay":
 		err = prepay(os.Args[2:])
 	case "up":
@@ -71,12 +87,14 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
+  smartvpn run     -wallet FILE -entry-id N -entry-key KEY -entry-endpoint HOST:PORT
+                   -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-credit-dir DIR] [-wait 10m]
   smartvpn connect -entry-id N -entry-key KEY -entry-endpoint HOST:PORT -entry-ticket T -key-id K
                    (-exit-id N -exit-key KEY -exit-endpoint HOST:PORT -exit-ticket T [-wait 10m] | -exit-credit FILE)
   smartvpn prepay  -exit-id N -exit-key KEY -exit-endpoint HOST:PORT -key-id K -ticket T -out FILE
   smartvpn up      -node-id N -node-key KEY -endpoint HOST:PORT -key-id K -ticket T
   smartvpn down
-All take -chain-id ID (default smartnodes).`)
+The others take -chain-id ID (default smartnodes); run reads it from the wallet.`)
 	os.Exit(2)
 }
 
@@ -135,20 +153,27 @@ func tunnelAddr(r control.Reply) (netip.Addr, error) {
 
 func iface(name string) wg.Interface { return wg.Interface{Name: name, Run: wg.Exec{}} }
 
+// uniform picks a time from 0 to max, from the system's secure source.
+func uniform(max time.Duration) time.Duration {
+	if max <= 0 {
+		return 0
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(max)+1))
+	if err != nil {
+		return max
+	}
+	return time.Duration(n.Int64())
+}
+
 // randomWait picks a time between a fifth of max and max.
 func randomWait(max time.Duration) time.Duration {
 	if max <= 0 {
 		return 0
 	}
-	low := max / 5
-	n, err := rand.Int(rand.Reader, big.NewInt(int64(max-low)+1))
-	if err != nil {
-		return max
-	}
-	return low + time.Duration(n.Int64())
+	return max/5 + uniform(max-max/5)
 }
 
-func connect(args []string) (err error) {
+func connect(args []string) error {
 	fs := flag.NewFlagSet("connect", flag.ExitOnError)
 	chainID := fs.String("chain-id", "smartnodes", "chain id")
 	keyID := fs.Uint64("key-id", 0, "issuer key the tickets were signed under")
@@ -159,134 +184,164 @@ func connect(args []string) (err error) {
 	exitID := fs.Uint64("exit-id", 0, "exit node id")
 	exitKey := fs.String("exit-key", "", "exit node's public key from the registry")
 	exitEndpoint := fs.String("exit-endpoint", "", "exit node's endpoint from the registry")
-	exitTicket := fs.String("exit-ticket", "", "ticket spent to the exit node, when no credit is saved")
+	exitTicket := fs.String("exit-ticket", "", "ticket spent to the exit node, used if there is no usable credit")
 	exitCredit := fs.String("exit-credit", "", "credit file from 'smartvpn prepay'")
-	wait := fs.Duration("wait", 10*time.Minute, "with -exit-ticket, the longest random wait between paying the exit and using it")
+	wait := fs.Duration("wait", 10*time.Minute, "the longest random wait between paying the exit and using it")
 	_ = fs.Parse(args)
 
 	if err := needRoot(); err != nil {
 		return err
 	}
-	if *entryKey == "" || *entryEndpoint == "" || *entryTicket == "" {
-		return errors.New("-entry-key, -entry-endpoint and -entry-ticket are required")
+	if *entryTicket == "" || (*exitCredit == "" && *exitTicket == "") {
+		return errors.New("-entry-ticket, and -exit-credit or -exit-ticket, are required")
 	}
-	if (*exitCredit == "") == (*exitTicket == "") {
-		return errors.New("give either -exit-credit or -exit-ticket")
-	}
-	entry, err := newPeer(*entryID, *entryKey, *entryEndpoint)
-	if err != nil {
-		return err
-	}
-
-	var exit peer
-	var exitPriv []byte
-	if *exitCredit != "" {
-		c, err := loadCredit(*exitCredit, time.Now())
+	if *exitCredit != "" && *exitKey == "" {
+		// The exit comes from the credit file.
+		cr, err := loadCredit(*exitCredit, time.Now())
 		if err != nil {
 			return err
 		}
-		if c.ChainID != *chainID {
-			return fmt.Errorf("the credit is for chain %s", c.ChainID)
+		*exitID, *exitKey, *exitEndpoint = cr.ExitID, cr.ExitKey, cr.Endpoint
+	}
+	tickets := map[uint64][]string{*entryID: {*entryTicket}}
+	if *exitTicket != "" {
+		tickets[*exitID] = append(tickets[*exitID], *exitTicket)
+	}
+	pay := func(nodeID uint64) (string, error) {
+		if len(tickets[nodeID]) == 0 {
+			return "", fmt.Errorf("no ticket given for node %d", nodeID)
 		}
-		if exit, err = newPeer(c.ExitID, c.ExitKey, c.Endpoint); err != nil {
-			return err
-		}
-		if exitPriv, err = base64.StdEncoding.DecodeString(c.WGPrivate); err != nil || len(exitPriv) != 32 {
-			return errors.New("the credit file holds a bad key")
-		}
-	} else {
-		if *exitKey == "" || *exitEndpoint == "" {
-			return errors.New("-exit-key and -exit-endpoint are required with -exit-ticket")
-		}
-		if exit, err = newPeer(*exitID, *exitKey, *exitEndpoint); err != nil {
-			return err
-		}
+		t := tickets[nodeID][0]
+		tickets[nodeID] = tickets[nodeID][1:]
+		return t, nil
+	}
+	c, err := newClient(*chainID, *keyID, *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, pay, *exitCredit, *wait)
+	if err != nil {
+		return err
+	}
+	return c.open()
+}
+
+func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint string, exitID uint64, exitKey, exitEndpoint string,
+	pay func(uint64) (string, error), creditPath string, wait time.Duration) (*client, error) {
+	if entryKey == "" || entryEndpoint == "" || exitKey == "" || exitEndpoint == "" {
+		return nil, errors.New("the entry's and exit's keys and endpoints are required")
+	}
+	entry, err := newPeer(entryID, entryKey, entryEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	exit, err := newPeer(exitID, exitKey, exitEndpoint)
+	if err != nil {
+		return nil, err
 	}
 	if exit.endpoint.Addr() == entry.endpoint.Addr() {
-		return errors.New("the entry and exit nodes are on the same address")
+		return nil, errors.New("the entry and exit nodes are on the same address")
+	}
+	return &client{
+		chainID: chainID, keyID: keyID, entry: entry, exit: exit, pay: pay, creditPath: creditPath, wait: wait,
+		say: func(format string, a ...any) { fmt.Printf(time.Now().Format("15:04:05 ")+format+"\n", a...) },
+	}, nil
+}
+
+// runCmd connects, then stays running: it renews both sessions from the
+// wallet, buys the next session's exit credit ahead, and disconnects
+// cleanly when stopped.
+func runCmd(args []string) error {
+	fs := flag.NewFlagSet("run", flag.ExitOnError)
+	walletPath := fs.String("wallet", "", "ticket wallet file")
+	entryID := fs.Uint64("entry-id", 0, "entry node id")
+	entryKey := fs.String("entry-key", "", "entry node's public key from the registry")
+	entryEndpoint := fs.String("entry-endpoint", "", "entry node's endpoint from the registry")
+	exitID := fs.Uint64("exit-id", 0, "exit node id")
+	exitKey := fs.String("exit-key", "", "exit node's public key from the registry")
+	exitEndpoint := fs.String("exit-endpoint", "", "exit node's endpoint from the registry")
+	creditDir := fs.String("credit-dir", "/var/lib/smartvpn", "folder for exit credits bought ahead")
+	wait := fs.Duration("wait", 10*time.Minute, "the longest random wait between paying an exit and first using it")
+	_ = fs.Parse(args)
+
+	if err := needRoot(); err != nil {
+		return err
+	}
+	if *walletPath == "" {
+		return errors.New("-wallet is required")
+	}
+	w, err := wallet.Open(*walletPath)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(*creditDir, 0o700); err != nil {
+		return err
+	}
+	creditPath := filepath.Join(*creditDir, fmt.Sprintf("credit-%d.json", *exitID))
+	c, err := newClient(w.ChainID(), w.KeyID(), *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, w.Spend, creditPath, *wait)
+	if err != nil {
+		return err
 	}
 
-	if err := prepareRoutes(entry.endpoint.Addr()); err != nil {
+	stop, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	if err := c.open(); err != nil {
 		return err
 	}
-	defer func() {
-		if err != nil {
-			_ = iface(innerIface).Delete()
-			_ = iface(outerIface).Delete()
-			_ = restoreRoutes()
-		}
-	}()
+	c.say("%d tickets left in the wallet", w.Left())
 
-	// Hop one: the entry node.
-	outerKey, err := control.NewKey()
-	if err != nil {
-		return err
+	now := time.Now()
+	entryAt := renewAt(now, c.entryEnds)
+	exitAt := renewAt(now, c.exitEnds)
+	var creditAt time.Time
+	if _, err := os.Stat(creditPath); err != nil {
+		creditAt = now.Add(randomBetween(c.exitEnds.Sub(now)/10, c.exitEnds.Sub(now)*9/10))
 	}
-	reply, err := ask(*chainID, entry, control.Hello{
-		KeyID: *keyID, Tickets: strings.Fields(*entryTicket), WGPubkey: base64.StdEncoding.EncodeToString(outerKey.Public),
-	})
-	if err != nil {
-		return err
-	}
-	outerAddr, err := tunnelAddr(reply)
-	if err != nil {
-		return err
-	}
-	// The outer tunnel carries only traffic for the exit node.
-	if err := iface(outerIface).SetUpTunnel(wg.Tunnel{
-		PrivateKey: outerKey.Private, NodeKey: entry.key, Endpoint: entry.endpoint, Address: outerAddr,
-		Allowed: []netip.Prefix{netip.PrefixFrom(exit.endpoint.Addr(), 32)},
-	}); err != nil {
-		return err
-	}
-	// Until the inner tunnel is up, everything else is sent to the outer
-	// interface, which drops it: nothing leaves outside the tunnels.
-	if err := run("ip", "route", "replace", "default", "dev", outerIface); err != nil {
-		return err
-	}
-	fmt.Printf("entry node %d: tunnel address %s\n", entry.id, outerAddr)
-
-	// Hop two: the exit node, reached through the entry node.
-	if exitPriv == nil {
-		k, err := control.NewKey()
-		if err != nil {
-			return err
+	retry := 30 * time.Second
+	for {
+		next := entryAt
+		if exitAt.Before(next) {
+			next = exitAt
 		}
-		exitPriv = k.Private
-		if _, err := ask(*chainID, exit, control.Hello{
-			KeyID: *keyID, Tickets: strings.Fields(*exitTicket), WGPubkey: base64.StdEncoding.EncodeToString(k.Public), Prepay: true,
-		}); err != nil {
-			return err
+		if !creditAt.IsZero() && creditAt.Before(next) {
+			next = creditAt
 		}
-		d := randomWait(*wait).Round(time.Second)
-		fmt.Printf("exit node %d paid; waiting %s before using it, so the chain cannot link the two\n", exit.id, d)
-		time.Sleep(d)
+		timer := time.NewTimer(time.Until(next))
+		select {
+		case <-stop.Done():
+			timer.Stop()
+			c.say("stopping")
+			if err := teardown(); err != nil {
+				return err
+			}
+			c.say("disconnected; this machine is back as it was")
+			return nil
+		case <-timer.C:
+		}
+		now = time.Now()
+		switch {
+		case !now.Before(entryAt):
+			if err := c.renewEntry(); err != nil {
+				c.say("could not renew the entry session (%v); retrying in %s; the kill switch stays on", err, retry)
+				entryAt = now.Add(retry)
+				continue
+			}
+			entryAt = renewAt(now, c.entryEnds)
+			c.say("entry session renewed; it now ends %s; %d tickets left", clock(c.entryEnds), w.Left())
+		case !now.Before(exitAt):
+			if err := c.renewExit(); err != nil {
+				c.say("could not renew the exit session (%v); retrying in %s; the kill switch stays on", err, retry)
+				exitAt = now.Add(retry)
+				continue
+			}
+			exitAt = renewAt(now, c.exitEnds)
+			c.say("exit session renewed; it now ends %s; %d tickets left", clock(c.exitEnds), w.Left())
+		default:
+			if err := c.buyCredit(); err != nil {
+				c.say("could not buy the next exit credit (%v); retrying in %s", err, retry)
+				creditAt = now.Add(retry)
+				continue
+			}
+			creditAt = time.Time{}
+			c.say("exit credit for the next connection bought ahead; %d tickets left", w.Left())
+		}
 	}
-	exitKeyPair, err := control.KeyFromPrivate(exitPriv)
-	if err != nil {
-		return err
-	}
-	reply, err = ask(*chainID, exit, control.Hello{KeyID: *keyID, WGPubkey: base64.StdEncoding.EncodeToString(exitKeyPair.Public)})
-	if err != nil {
-		return err
-	}
-	if *exitCredit != "" {
-		// A credit is used once.
-		_ = os.Remove(*exitCredit)
-	}
-	innerAddr, err := tunnelAddr(reply)
-	if err != nil {
-		return err
-	}
-	if err := iface(innerIface).SetUpTunnel(wg.Tunnel{
-		PrivateKey: exitPriv, NodeKey: exit.key, Endpoint: exit.endpoint, Address: innerAddr,
-		Allowed: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}, MTU: innerMTU,
-	}); err != nil {
-		return err
-	}
-	fmt.Printf("exit node %d: tunnel address %s; session ends %s\nconnected through two hops\n",
-		exit.id, innerAddr, time.Unix(reply.Expires, 0).Format("15:04:05"))
-	return nil
 }
 
 func prepay(args []string) error {
@@ -339,7 +394,7 @@ func prepay(args []string) error {
 	return nil
 }
 
-// up is the one-hop connection from stage 1.
+// up is the one-hop connection from stage 1, with the kill switch.
 func up(args []string) (err error) {
 	fs := flag.NewFlagSet("up", flag.ExitOnError)
 	nodeID := fs.Uint64("node-id", 0, "id of the node to use")
@@ -365,17 +420,17 @@ func up(args []string) (err error) {
 	}
 	defer func() {
 		if err != nil {
-			_ = iface(outerIface).Delete()
-			_ = restoreRoutes()
+			teardown()
 		}
 	}()
+	if err := (guard.KillSwitch{Run: wg.Exec{}, Tunnels: []string{outerIface}}).Apply(p.endpoint); err != nil {
+		return fmt.Errorf("kill switch: %w", err)
+	}
 	k, err := control.NewKey()
 	if err != nil {
 		return err
 	}
-	reply, err := ask(*chainID, p, control.Hello{
-		KeyID: *keyID, Tickets: strings.Fields(*ticket), WGPubkey: base64.StdEncoding.EncodeToString(k.Public),
-	})
+	reply, err := ask(*chainID, p, control.Hello{KeyID: *keyID, Tickets: strings.Fields(*ticket), WGPubkey: pubOf(k)})
 	if err != nil {
 		return err
 	}
@@ -386,8 +441,12 @@ func up(args []string) (err error) {
 	if err := iface(outerIface).SetUpClient(k.Private, p.key, p.endpoint, addr); err != nil {
 		return err
 	}
-	fmt.Printf("connected through node %d; tunnel address %s; session ends %s\n",
-		p.id, addr, time.Unix(reply.Expires, 0).Format("15:04:05"))
+	if reply.DNS != "" {
+		if err := setResolver(reply.DNS); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("connected through node %d; tunnel address %s; session ends %s\n", p.id, addr, clock(time.Unix(reply.Expires, 0)))
 	return nil
 }
 
@@ -395,9 +454,7 @@ func down() error {
 	if err := needRoot(); err != nil {
 		return err
 	}
-	_ = iface(innerIface).Delete()
-	_ = iface(outerIface).Delete()
-	if err := restoreRoutes(); err != nil {
+	if err := teardown(); err != nil {
 		return err
 	}
 	fmt.Println("disconnected")

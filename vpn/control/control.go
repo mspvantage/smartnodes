@@ -93,6 +93,8 @@ type Reply struct {
 	// Expires is when the session ends unless renewed, in Unix seconds. For
 	// a prepayment, it is when the credit lapses if unused.
 	Expires int64 `json:"expires,omitempty"`
+	// DNS is a name server to use inside the tunnel, if the node runs one.
+	DNS string `json:"dns,omitempty"`
 }
 
 // KeyFromPrivate builds a key pair from a raw Curve25519 private key, such

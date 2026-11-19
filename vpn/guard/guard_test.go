@@ -128,3 +128,19 @@ func TestRemove(t *testing.T) {
 		}
 	}
 }
+
+func TestExitRulesWithDNS(t *testing.T) {
+	rules, err := Guard{Iface: "sx0", DNS: netip.MustParseAddr("10.78.0.1")}.Rules(Exit, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "-A SNI-sx0 -d 10.78.0.1/32 -p udp --dport 53 -j ACCEPT\n-A SNI-sx0 -d 10.78.0.1/32 -p tcp --dport 53 -j ACCEPT\n-A SNI-sx0 -j DROP\n"
+	if !strings.Contains(rules, want) {
+		t.Fatalf("rules:\n%s", rules)
+	}
+	// An entry node offers no name server.
+	rules, _ = Guard{Iface: "sn0", DNS: netip.MustParseAddr("10.77.0.1")}.Rules(Entry, nil)
+	if strings.Contains(rules, "--dport 53") {
+		t.Fatalf("entry rules:\n%s", rules)
+	}
+}

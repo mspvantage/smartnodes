@@ -735,3 +735,14 @@ func TestCreditKeptWhenFull(t *testing.T) {
 		t.Fatalf("credit lost when the node was full: %s", r.Error)
 	}
 }
+
+func TestReplyOffersDNS(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/24", func(c *Config) { c.DNS = netip.MustParseAddr("10.77.0.1") })
+	if r := wd.hello(wgKey(t), wd.w.ticket(t, nodeID)); !r.OK || r.DNS != "10.77.0.1" {
+		t.Fatalf("%+v", r)
+	}
+	wd2 := newWorld(t, "10.77.0.0/24")
+	if r := wd2.hello(wgKey(t), wd2.w.ticket(t, nodeID)); !r.OK || r.DNS != "" {
+		t.Fatalf("%+v", r)
+	}
+}

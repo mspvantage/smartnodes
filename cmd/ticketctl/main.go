@@ -52,6 +52,8 @@ type walletTicket struct {
 	Blinded        string `json:"blinded"`
 	// Signature is the unblinded issuer signature, set by wallet-unblind.
 	Signature string `json:"signature,omitempty"`
+	// Used is set by smartvpn when it spends the ticket.
+	Used bool `json:"used,omitempty"`
 }
 
 // walletFile is a buyer's batch of tickets for one chain and issuer key.

@@ -35,6 +35,9 @@ const (
 type Guard struct {
 	Iface string
 	Run   wg.Runner
+	// DNS is an exit node's name server address inside the tunnel, which
+	// clients may reach.
+	DNS netip.Addr
 }
 
 func (g Guard) chains() (forward, input string) {
@@ -55,7 +58,16 @@ func (g Guard) Rules(role Role, allowed []netip.AddrPort) (string, error) {
 	var b strings.Builder
 	b.WriteString("*filter\n")
 	fmt.Fprintf(&b, ":%s - [0:0]\n:%s - [0:0]\n", forward, input)
-	// Nothing reaches the node machine itself through the tunnel.
+	// Nothing reaches the node machine itself through the tunnel, except an
+	// exit node's name server on its tunnel address.
+	if role == Exit && g.DNS.IsValid() {
+		if !g.DNS.Is4() {
+			return "", fmt.Errorf("guard: name server %s is not IPv4", g.DNS)
+		}
+		for _, proto := range []string{"udp", "tcp"} {
+			fmt.Fprintf(&b, "-A %s -d %s/32 -p %s --dport 53 -j ACCEPT\n", input, g.DNS, proto)
+		}
+	}
 	fmt.Fprintf(&b, "-A %s -j DROP\n", input)
 	switch role {
 	case Entry:

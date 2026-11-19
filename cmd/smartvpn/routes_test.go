@@ -116,3 +116,34 @@ func TestRandomWait(t *testing.T) {
 		t.Fatal("zero wait")
 	}
 }
+
+func TestResolverRoundTrip(t *testing.T) {
+	fakeCommands(t, map[string]string{
+		"-4 route show default":       "default via 192.168.1.1 dev eth0\n",
+		"-4 -o route get 203.0.113.5": "203.0.113.5 via 192.168.1.1 dev eth0",
+	})
+	resolvPath = filepath.Join(t.TempDir(), "resolv.conf")
+	_ = os.WriteFile(resolvPath, []byte("nameserver 192.168.1.1\n"), 0o644)
+	if err := prepareRoutes(netip.MustParseAddr("203.0.113.5")); err != nil {
+		t.Fatal(err)
+	}
+	if err := setResolver("8.8.8.8; rm"); err == nil {
+		t.Fatal("bad name server accepted")
+	}
+	if err := setResolver("10.78.0.1"); err != nil {
+		t.Fatal(err)
+	}
+	// A second session keeps the original, not the tunnel's.
+	if err := setResolver("10.78.0.1"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(resolvPath); !strings.Contains(string(got), "nameserver 10.78.0.1\n") {
+		t.Fatalf("resolv.conf %q", got)
+	}
+	if err := restoreRoutes(); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(resolvPath); string(got) != "nameserver 192.168.1.1\n" {
+		t.Fatalf("not restored: %q", got)
+	}
+}
