@@ -54,7 +54,7 @@ func main() {
 	gasPrices := flag.String("gas-prices", "0.025usnode", "gas price for redemptions")
 	maxExchanges := flag.Int("max-exchanges", 64, "most client exchanges handled at once")
 	dnsUpstream := flag.String("dns-upstream", "", "exit nodes: resolver to pass clients' name lookups to (default: the first in /etc/resolv.conf)")
-	strict := flag.Bool("strict", false, "refuse to start if this machine could write session details to disk")
+	strict := flag.Bool("strict", false, "refuse to start if this machine could write session details to disk, or if -from is the operator's own key")
 	flag.Parse()
 
 	// Before anything secret is in memory.
@@ -70,13 +70,13 @@ func main() {
 	}
 
 	if err := run(*keyFile, *nodeID, *chainID, *listen, *iface, *subnet, *session, *gather, *rpc, *binary,
-		*from, *backend, *home, *gasPrices, *maxExchanges, *dnsUpstream); err != nil {
+		*from, *backend, *home, *gasPrices, *maxExchanges, *dnsUpstream, *strict); err != nil {
 		log.Fatalf("smartnode: %v", err)
 	}
 }
 
 func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, session, gather time.Duration,
-	rpc, binary, from, backend, home, gasPrices string, maxExchanges int, dnsUpstream string) error {
+	rpc, binary, from, backend, home, gasPrices string, maxExchanges int, dnsUpstream string, strict bool) error {
 	if os.Geteuid() != 0 {
 		return errors.New("must run as root, to create the WireGuard interface")
 	}
@@ -119,6 +119,25 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 	}
 	if info.Status != chain.StatusActive {
 		return fmt.Errorf("node %d is not active in the registry", nodeID)
+	}
+	// The signing key must be allowed to redeem, and should be the service
+	// key, so the key that controls the bond is not on this server.
+	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	signer, err := cli.SignerAddress(ctx)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("reading the address of key %s: %w", from, err)
+	}
+	switch signer {
+	case info.ServiceKey:
+		log.Printf("redeeming with node %d's service key; the operator's key is not needed on this server", nodeID)
+	case info.Operator:
+		log.Printf("warning: redeeming with the operator's own key, which also controls the bond; set a service key with 'smartnodesd tx registry set-service-key' and run with that instead")
+		if strict {
+			return errors.New("refusing to start with -strict while the operator's key is on this server")
+		}
+	default:
+		return fmt.Errorf("key %s (%s) can neither redeem node %d's tickets as its operator nor as its service key", from, signer, nodeID)
 	}
 	var role guard.Role
 	switch info.Tier {

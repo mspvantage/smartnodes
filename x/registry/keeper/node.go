@@ -31,6 +31,8 @@ const (
 	AttributeKeyReturnedToPool = "returned_to_sponsor_pool"
 	AttributeKeySponsored      = "sponsored"
 
+	EventTypeSetServiceKey   = "registry_set_service_key"
+	AttributeKeyServiceKey   = "service_key"
 	EventTypeSponsorNode     = "registry_sponsor_node"
 	EventTypeFundSponsorPool = "registry_fund_sponsor_pool"
 )

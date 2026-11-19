@@ -179,3 +179,22 @@ func TestListNodes(t *testing.T) {
 		t.Fatalf("second call %s", got)
 	}
 }
+
+func TestServiceKeyAndSigner(t *testing.T) {
+	s := &script{answers: []func([]string) ([]byte, error){
+		ok(`{"node":{"operator":"smart1op","service_key":"smart1svc","endpoint":"10.0.0.1:1","pubkey":"k","tier":"2","status":"1"}}`),
+		ok("smart1svc\n"),
+	}}
+	c := newCLI(s)
+	n, err := c.Node(context.Background(), 3)
+	if err != nil || n.ServiceKey != "smart1svc" || n.ID != 3 {
+		t.Fatalf("%+v %v", n, err)
+	}
+	addr, err := c.SignerAddress(context.Background())
+	if err != nil || addr != "smart1svc" {
+		t.Fatalf("%q %v", addr, err)
+	}
+	if got := strings.Join(s.calls[1], " "); got != "keys show alice -a --keyring-backend test --home /h" {
+		t.Fatalf("call %s", got)
+	}
+}

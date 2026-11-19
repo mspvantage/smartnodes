@@ -21,4 +21,8 @@ message Node {
   // unit of the staking token. It returns to the pool when the node leaves.
   // A slash burns the operator's own part of the bond first.
   uint64 sponsored = 9;
+  // service_key, if set, is a second account that may redeem this node's
+  // tickets and nothing else. Payment still goes to the operator. It lets the
+  // operator's own key, which controls the bond, stay off the node's server.
+  string service_key = 10 [(cosmos_proto.scalar) = "cosmos.AddressString"];
 }

@@ -18,10 +18,13 @@ import (
 // chain checks that the issuers signed it, that its holder named this node,
 // and that it has not been paid before. If any ticket fails, the whole
 // transaction fails and nothing is paid.
+//
+// The signer, in the operator field, is either the node's operator or its
+// service key. Payment always goes to the operator.
 func (k msgServer) RedeemTickets(ctx context.Context, msg *types.MsgRedeemTickets) (*types.MsgRedeemTicketsResponse, error) {
-	operator, err := k.addressCodec.StringToBytes(msg.Operator)
+	signer, err := k.addressCodec.StringToBytes(msg.Operator)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "invalid operator address")
+		return nil, errorsmod.Wrap(err, "invalid signer address")
 	}
 
 	params, err := k.Params.Get(ctx)
@@ -33,14 +36,23 @@ func (k msgServer) RedeemTickets(ctx context.Context, msg *types.MsgRedeemTicket
 		return nil, errorsmod.Wrapf(types.ErrInvalidBatch, "got %d tickets, want 1-%d", count, params.MaxBatch)
 	}
 
-	// Only the operator of a registered, active node can be paid.
+	// Only the operator of a registered, active node can be paid, and only
+	// the operator or the node's service key may ask.
 	node, err := k.registryKeeper.GetNode(ctx, msg.NodeId)
 	if err != nil {
 		return nil, err
 	}
-	owner, err := k.addressCodec.StringToBytes(node.Operator)
-	if err != nil || !bytes.Equal(owner, operator) {
-		return nil, errorsmod.Wrapf(types.ErrNotNodeOperator, "node %d", msg.NodeId)
+	operator, err := k.addressCodec.StringToBytes(node.Operator)
+	if err != nil {
+		return nil, errorsmod.Wrapf(types.ErrNotNodeOperator, "node %d has an invalid operator address", msg.NodeId)
+	}
+	allowed := bytes.Equal(signer, operator)
+	if !allowed && node.ServiceKey != "" {
+		service, err := k.addressCodec.StringToBytes(node.ServiceKey)
+		allowed = err == nil && bytes.Equal(signer, service)
+	}
+	if !allowed {
+		return nil, errorsmod.Wrapf(types.ErrNotNodeOperator, "node %d: signer is neither its operator nor its service key", msg.NodeId)
 	}
 	if node.Status != registrytypes.StatusActive {
 		return nil, errorsmod.Wrapf(types.ErrNodeNotActive, "node %d", msg.NodeId)

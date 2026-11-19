@@ -76,6 +76,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
 				{
+					RpcMethod:      "SetServiceKey",
+					Use:            "set-service-key [id] [service-key]",
+					Short:          "Let a second account redeem this node's tickets (payment still goes to the operator); pass \"\" to clear it",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "service_key"}},
+				},
+				{
 					RpcMethod:      "WithdrawBond",
 					Use:            "withdraw-bond [id]",
 					Short:          "Send a withdraw-bond tx",

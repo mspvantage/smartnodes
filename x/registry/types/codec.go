@@ -10,6 +10,7 @@ func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgSponsorNode{},
 		&MsgFundSponsorPool{},
+		&MsgSetServiceKey{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),

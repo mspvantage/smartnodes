@@ -40,6 +40,10 @@ service Msg {
 
   // WithdrawBond defines the WithdrawBond RPC.
   rpc WithdrawBond(MsgWithdrawBond) returns (MsgWithdrawBondResponse);
+
+  // SetServiceKey sets or clears the account that may redeem a node's
+  // tickets on the operator's behalf. Only the operator may send it.
+  rpc SetServiceKey(MsgSetServiceKey) returns (MsgSetServiceKeyResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -146,3 +150,15 @@ message MsgFundSponsorPool {
 
 // MsgFundSponsorPoolResponse defines the MsgFundSponsorPoolResponse message.
 message MsgFundSponsorPoolResponse {}
+
+// MsgSetServiceKey sets a node's service key. An empty service_key clears it.
+message MsgSetServiceKey {
+  option (cosmos.msg.v1.signer) = "operator";
+  option (amino.name) = "smartnodes/x/registry/MsgSetServiceKey";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  string service_key = 3;
+}
+
+// MsgSetServiceKeyResponse defines the MsgSetServiceKeyResponse message.
+message MsgSetServiceKeyResponse {}

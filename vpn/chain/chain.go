@@ -121,10 +121,12 @@ func (c *CLI) TicketSpent(ctx context.Context, keyID uint64, ticketKey []byte) (
 type NodeInfo struct {
 	ID       uint64
 	Operator string
-	Endpoint string
-	Pubkey   string
-	Tier     uint64
-	Status   uint64
+	// ServiceKey is the account allowed to redeem for the operator, if any.
+	ServiceKey string
+	Endpoint   string
+	Pubkey     string
+	Tier       uint64
+	Status     uint64
 }
 
 // Registry tiers and statuses, as the registry module numbers them.
@@ -141,10 +143,30 @@ type nodeJSON struct {
 	Pubkey   string `json:"pubkey"`
 	Tier     number `json:"tier"`
 	Status   number `json:"status"`
+	Service  string `json:"service_key"`
+	// The chain's JSON may also spell it in camel case.
+	ServiceCamel string `json:"serviceKey"`
 }
 
 func (n nodeJSON) info() NodeInfo {
-	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
+	service := n.Service
+	if service == "" {
+		service = n.ServiceCamel
+	}
+	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, ServiceKey: service, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
+}
+
+// SignerAddress returns the address of the key that signs redemptions.
+func (c *CLI) SignerAddress(ctx context.Context) (string, error) {
+	out, err := c.Run(ctx, []string{"keys", "show", c.From, "-a", "--keyring-backend", c.KeyringBackend, "--home", c.Home})
+	if err != nil {
+		return "", err
+	}
+	addr := strings.TrimSpace(string(out))
+	if addr == "" || strings.ContainsAny(addr, " \n") {
+		return "", fmt.Errorf("chain: unreadable address for key %s", c.From)
+	}
+	return addr, nil
 }
 
 // Node reads a node's registry entry.

@@ -28,4 +28,5 @@ var (
 	ErrNotSponsor         = errors.Register(ModuleName, 1117, "signer is not the sponsor account")
 	ErrSponsorLimit       = errors.Register(ModuleName, 1118, "the limit of sponsored nodes has been reached")
 	ErrInvalidAmount      = errors.Register(ModuleName, 1119, "invalid amount")
+	ErrInvalidServiceKey  = errors.Register(ModuleName, 1120, "invalid service key")
 )

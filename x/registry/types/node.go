@@ -32,6 +32,8 @@ const (
 	MaxEndpointLength = 255
 	// PubkeyLength is the size of a decoded node public key (Curve25519).
 	PubkeyLength = 32
+	// MaxAddressLength bounds a stored account address, in bytes.
+	MaxAddressLength = 128
 )
 
 // ValidateTier checks that the tier is one this chain knows.
@@ -103,6 +105,9 @@ func (n Node) ValidateBasic() error {
 	}
 	if err := n.Bond.Validate(); err != nil {
 		return errorsmod.Wrap(ErrInvalidBond, err.Error())
+	}
+	if n.ServiceKey != "" && (n.ServiceKey == n.Operator || len(n.ServiceKey) > MaxAddressLength) {
+		return errorsmod.Wrap(ErrInvalidServiceKey, "must differ from the operator and be a valid address")
 	}
 	// The sponsored part is part of the bond, never more than it.
 	if n.Bond.Amount.IsNil() || math.NewIntFromUint64(n.Sponsored).GT(n.Bond.Amount) {
