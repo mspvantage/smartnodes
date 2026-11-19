@@ -128,34 +128,74 @@ func (i Interface) RemovePeer(publicKey string) error {
 	return i.Run.Run(nil, "wg", "set", i.Name, "peer", publicKey, "remove")
 }
 
-// SetUpClient creates the client's interface and sends all traffic through
-// it. The route to the node itself stays on the existing network, because a
-// more specific route to it already exists.
-func (i Interface) SetUpClient(privateKey []byte, nodeKey string, endpoint netip.AddrPort, address netip.Addr) error {
+// Tunnel describes one client tunnel.
+type Tunnel struct {
+	PrivateKey []byte
+	NodeKey    string
+	Endpoint   netip.AddrPort
+	Address    netip.Addr
+	// Allowed lists the addresses sent through the tunnel. A route is added
+	// for each; 0.0.0.0/0 makes the tunnel the default route.
+	Allowed []netip.Prefix
+	// MTU sets the interface MTU; 0 keeps WireGuard's default. A tunnel
+	// carried inside another tunnel needs a smaller one.
+	MTU int
+}
+
+// SetUpTunnel creates a client interface as described.
+func (i Interface) SetUpTunnel(t Tunnel) error {
 	if err := i.check(); err != nil {
 		return err
 	}
-	if len(privateKey) != 32 {
+	if len(t.PrivateKey) != 32 {
 		return fmt.Errorf("wg: private key must be 32 bytes")
 	}
-	if err := checkKey(nodeKey); err != nil {
+	if err := checkKey(t.NodeKey); err != nil {
 		return err
 	}
-	if !endpoint.IsValid() || !address.Is4() {
-		return fmt.Errorf("wg: bad endpoint or address")
+	if !t.Endpoint.IsValid() || !t.Address.Is4() || len(t.Allowed) == 0 {
+		return fmt.Errorf("wg: bad endpoint, address or allowed list")
+	}
+	if t.MTU != 0 && (t.MTU < 1280 || t.MTU > 9000) {
+		return fmt.Errorf("wg: MTU %d out of range", t.MTU)
+	}
+	var allowed []string
+	for _, p := range t.Allowed {
+		if !p.IsValid() || !p.Addr().Is4() {
+			return fmt.Errorf("wg: allowed addresses must be IPv4 prefixes")
+		}
+		allowed = append(allowed, p.Masked().String())
 	}
 	_ = i.Delete()
-	key := []byte(base64.StdEncoding.EncodeToString(privateKey))
+	key := []byte(base64.StdEncoding.EncodeToString(t.PrivateKey))
 	steps := []struct {
 		stdin []byte
 		args  []string
 	}{
 		{nil, []string{"ip", "link", "add", i.Name, "type", "wireguard"}},
 		{key, []string{"wg", "set", i.Name, "private-key", "/dev/stdin",
-			"peer", nodeKey, "endpoint", endpoint.String(), "allowed-ips", "0.0.0.0/0", "persistent-keepalive", "25"}},
-		{nil, []string{"ip", "address", "add", address.String() + "/32", "dev", i.Name}},
-		{nil, []string{"ip", "link", "set", i.Name, "up"}},
-		{nil, []string{"ip", "route", "replace", "default", "dev", i.Name}},
+			"peer", t.NodeKey, "endpoint", t.Endpoint.String(), "allowed-ips", strings.Join(allowed, ","), "persistent-keepalive", "25"}},
+		{nil, []string{"ip", "address", "add", t.Address.String() + "/32", "dev", i.Name}},
+	}
+	if t.MTU != 0 {
+		steps = append(steps, struct {
+			stdin []byte
+			args  []string
+		}{nil, []string{"ip", "link", "set", i.Name, "mtu", strconv.Itoa(t.MTU)}})
+	}
+	steps = append(steps, struct {
+		stdin []byte
+		args  []string
+	}{nil, []string{"ip", "link", "set", i.Name, "up"}})
+	for _, p := range t.Allowed {
+		dest := p.Masked().String()
+		if p.Bits() == 0 {
+			dest = "default"
+		}
+		steps = append(steps, struct {
+			stdin []byte
+			args  []string
+		}{nil, []string{"ip", "route", "replace", dest, "dev", i.Name}})
 	}
 	for _, s := range steps {
 		if err := i.Run.Run(s.stdin, s.args[0], s.args[1:]...); err != nil {
@@ -164,4 +204,14 @@ func (i Interface) SetUpClient(privateKey []byte, nodeKey string, endpoint netip
 		}
 	}
 	return nil
+}
+
+// SetUpClient creates a single-hop client interface and sends all traffic
+// through it. The route to the node itself stays on the existing network,
+// because a more specific route to it already exists.
+func (i Interface) SetUpClient(privateKey []byte, nodeKey string, endpoint netip.AddrPort, address netip.Addr) error {
+	return i.SetUpTunnel(Tunnel{
+		PrivateKey: privateKey, NodeKey: nodeKey, Endpoint: endpoint, Address: address,
+		Allowed: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")},
+	})
 }

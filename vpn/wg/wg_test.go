@@ -136,3 +136,54 @@ func TestSetUpClient(t *testing.T) {
 		t.Fatalf("commands:\n%s", r.cmds())
 	}
 }
+
+func TestSetUpTunnelForTwoHops(t *testing.T) {
+	r := &fakeRunner{}
+	outer := Interface{Name: "sv0", Run: r}
+	err := outer.SetUpTunnel(Tunnel{
+		PrivateKey: priv, NodeKey: peerKey,
+		Endpoint: netip.MustParseAddrPort("10.200.0.1:51820"), Address: netip.MustParseAddr("10.77.0.2"),
+		Allowed: []netip.Prefix{netip.MustParsePrefix("10.201.0.2/32")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Join([]string{
+		"ip link del sv0",
+		"ip link add sv0 type wireguard",
+		"wg set sv0 private-key /dev/stdin peer " + peerKey + " endpoint 10.200.0.1:51820 allowed-ips 10.201.0.2/32 persistent-keepalive 25",
+		"ip address add 10.77.0.2/32 dev sv0",
+		"ip link set sv0 up",
+		"ip route replace 10.201.0.2/32 dev sv0",
+	}, "\n")
+	if r.cmds() != want {
+		t.Fatalf("outer:\n%s", r.cmds())
+	}
+
+	r2 := &fakeRunner{}
+	inner := Interface{Name: "sv1", Run: r2}
+	err = inner.SetUpTunnel(Tunnel{
+		PrivateKey: priv, NodeKey: peerKey,
+		Endpoint: netip.MustParseAddrPort("10.201.0.2:51821"), Address: netip.MustParseAddr("10.78.0.2"),
+		Allowed: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}, MTU: 1340,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(r2.cmds(), "ip link set sv1 mtu 1340\nip link set sv1 up\nip route replace default dev sv1") {
+		t.Fatalf("inner:\n%s", r2.cmds())
+	}
+
+	for name, bad := range map[string]Tunnel{
+		"no allowed": {PrivateKey: priv, NodeKey: peerKey, Endpoint: netip.MustParseAddrPort("10.0.0.1:1"), Address: netip.MustParseAddr("10.77.0.2")},
+		"ipv6 allowed": {PrivateKey: priv, NodeKey: peerKey, Endpoint: netip.MustParseAddrPort("10.0.0.1:1"), Address: netip.MustParseAddr("10.77.0.2"),
+			Allowed: []netip.Prefix{netip.MustParsePrefix("::/0")}},
+		"tiny mtu": {PrivateKey: priv, NodeKey: peerKey, Endpoint: netip.MustParseAddrPort("10.0.0.1:1"), Address: netip.MustParseAddr("10.77.0.2"),
+			Allowed: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}, MTU: 500},
+	} {
+		r3 := &fakeRunner{}
+		if err := (Interface{Name: "sv2", Run: r3}).SetUpTunnel(bad); err == nil || len(r3.calls) != 0 {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+}

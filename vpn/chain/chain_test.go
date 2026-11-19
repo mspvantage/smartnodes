@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -150,5 +151,31 @@ func TestRedeemUnreachable(t *testing.T) {
 	var re *node.RedeemError
 	if err == nil || errors.As(err, &re) || errors.Is(err, node.ErrKeyExpired) || errors.Is(err, node.ErrUnconfirmed) {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestListNodes(t *testing.T) {
+	var page strings.Builder
+	page.WriteString(`{"node":[`)
+	for i := 0; i < listPage; i++ {
+		if i > 0 {
+			page.WriteString(",")
+		}
+		page.WriteString(`{"id":"` + strconv.Itoa(i) + `","endpoint":"10.0.0.1:1","tier":"2","status":"1"}`)
+	}
+	page.WriteString(`],"pagination":{}}`)
+	s := &script{answers: []func([]string) ([]byte, error){
+		ok(page.String()),
+		ok(`{"node":[{"endpoint":"10.0.0.9:51821","tier":"1","status":"1"}],"pagination":{}}`),
+	}}
+	nodes, err := newCLI(s).ListNodes(context.Background())
+	if err != nil || len(nodes) != listPage+1 {
+		t.Fatalf("%d nodes, %v", len(nodes), err)
+	}
+	if nodes[5].ID != 5 || nodes[5].Tier != TierExit || nodes[listPage].ID != 0 || nodes[listPage].Tier != TierEntry {
+		t.Fatalf("%+v %+v", nodes[5], nodes[listPage])
+	}
+	if got := strings.Join(s.calls[1], " "); !strings.Contains(got, "registry list-node --page-offset 1000 --page-limit 1000 -o json") {
+		t.Fatalf("second call %s", got)
 	}
 }

@@ -119,6 +119,7 @@ func (c *CLI) TicketSpent(ctx context.Context, keyID uint64, ticketKey []byte) (
 
 // NodeInfo is a node's registry entry.
 type NodeInfo struct {
+	ID       uint64
 	Operator string
 	Endpoint string
 	Pubkey   string
@@ -126,22 +127,63 @@ type NodeInfo struct {
 	Status   uint64
 }
 
+// Registry tiers and statuses, as the registry module numbers them.
+const (
+	TierEntry    = 1
+	TierExit     = 2
+	StatusActive = 1
+)
+
+type nodeJSON struct {
+	ID       number `json:"id"`
+	Operator string `json:"operator"`
+	Endpoint string `json:"endpoint"`
+	Pubkey   string `json:"pubkey"`
+	Tier     number `json:"tier"`
+	Status   number `json:"status"`
+}
+
+func (n nodeJSON) info() NodeInfo {
+	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
+}
+
 // Node reads a node's registry entry.
 func (c *CLI) Node(ctx context.Context, id uint64) (NodeInfo, error) {
 	var res struct {
-		Node struct {
-			Operator string `json:"operator"`
-			Endpoint string `json:"endpoint"`
-			Pubkey   string `json:"pubkey"`
-			Tier     number `json:"tier"`
-			Status   number `json:"status"`
-		} `json:"node"`
+		Node nodeJSON `json:"node"`
 	}
 	if err := c.query(ctx, &res, "registry", "get-node", strconv.FormatUint(id, 10)); err != nil {
 		return NodeInfo{}, err
 	}
-	n := res.Node
-	return NodeInfo{Operator: n.Operator, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}, nil
+	info := res.Node.info()
+	info.ID = id
+	return info, nil
+}
+
+// listPage is how many nodes one list query asks for.
+const listPage = 1000
+
+// ListNodes reads every node in the registry, a page at a time.
+func (c *CLI) ListNodes(ctx context.Context) ([]NodeInfo, error) {
+	var all []NodeInfo
+	for offset := 0; ; offset += listPage {
+		var res struct {
+			Node []nodeJSON `json:"node"`
+		}
+		if err := c.query(ctx, &res, "registry", "list-node",
+			"--page-offset", strconv.Itoa(offset), "--page-limit", strconv.Itoa(listPage)); err != nil {
+			return nil, err
+		}
+		for _, n := range res.Node {
+			all = append(all, n.info())
+		}
+		if len(res.Node) < listPage {
+			return all, nil
+		}
+		if offset > 1000*listPage {
+			return nil, fmt.Errorf("chain: the registry list does not end")
+		}
+	}
 }
 
 var (

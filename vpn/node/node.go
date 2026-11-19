@@ -8,6 +8,11 @@
 // only once the chain has accepted its tickets, so a ticket copied to
 // several nodes pays, and serves, exactly once.
 //
+// An exit node can also be paid ahead: the client prepays for a session key
+// it will use later, and the node holds a credit for that key, in memory,
+// for up to a day. Opening the session from the credit needs no chain step,
+// so the chain never shows when an exit session started.
+//
 // Privacy rules this package keeps:
 //
 //   - Nothing here is written to disk. Sessions live in memory and are
@@ -97,6 +102,8 @@ type Config struct {
 	// PaidKeep is how long a ticket that was redeemed but not yet used for
 	// a session stays usable, for a client whose exchange timed out.
 	PaidKeep time.Duration
+	// CreditLife is how long a prepaid credit lasts unused.
+	CreditLife time.Duration
 	// Now returns the current time. Tests replace it.
 	Now func() time.Time
 }
@@ -105,7 +112,10 @@ type Config struct {
 // anything about one session.
 type Stats struct {
 	Open        int
+	Credits     int
 	Accepted    uint64
+	Prepaid     uint64
+	CreditsUsed uint64
 	Refused     uint64
 	Redeemed    uint64
 	Unconfirmed uint64
@@ -113,6 +123,12 @@ type Stats struct {
 
 type session struct {
 	addr    netip.Addr
+	expires time.Time
+}
+
+// credit is session time paid ahead for a key.
+type credit struct {
+	amount  time.Duration
 	expires time.Time
 }
 
@@ -145,9 +161,11 @@ type Node struct {
 	busy map[string]bool
 	// paid holds tickets this node has redeemed but not yet turned into a
 	// session, with when they were redeemed.
-	paid  map[string]time.Time
-	keys  map[uint64]cachedKey
-	stats Stats
+	paid map[string]time.Time
+	// credits holds prepaid session time by session key.
+	credits map[string]*credit
+	keys    map[uint64]cachedKey
+	stats   Stats
 }
 
 // New makes a node. Call Run to start redeeming.
@@ -176,6 +194,9 @@ func New(cfg Config, chain Chain, tun Tunnel) (*Node, error) {
 	if cfg.PaidKeep <= 0 {
 		cfg.PaidKeep = time.Hour
 	}
+	if cfg.CreditLife <= 0 {
+		cfg.CreditLife = 24 * time.Hour
+	}
 	cfg.Subnet = cfg.Subnet.Masked()
 	return &Node{
 		cfg:      cfg,
@@ -186,6 +207,7 @@ func New(cfg Config, chain Chain, tun Tunnel) (*Node, error) {
 		used:     map[netip.Addr]bool{},
 		busy:     map[string]bool{},
 		paid:     map[string]time.Time{},
+		credits:  map[string]*credit{},
 		keys:     map[uint64]cachedKey{},
 	}, nil
 }
@@ -228,6 +250,13 @@ func (n *Node) issuerKey(ctx context.Context, id uint64) (IssuerKey, error) {
 // extends the session for the Hello's WireGuard key. It is the control
 // exchange's handler.
 func (n *Node) HandleHello(h control.Hello) control.Reply {
+	if len(h.Tickets) == 0 {
+		if h.Prepay {
+			return n.refuse("a prepayment needs tickets")
+		}
+		return n.useCredit(h.WGPubkey)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), n.cfg.Wait)
 	defer cancel()
 
@@ -330,7 +359,7 @@ func (n *Node) HandleHello(h control.Hello) control.Reply {
 		}
 	}
 
-	// Every ticket is paid. Turn them into session time.
+	// Every ticket is paid. Turn them into session time, now or later.
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	for _, t := range tickets {
@@ -340,31 +369,79 @@ func (n *Node) HandleHello(h control.Hello) control.Reply {
 			return control.Reply{Error: "a ticket has already been used"}
 		}
 	}
+	bought := time.Duration(len(tickets)) * n.cfg.SessionLength
 	now := n.cfg.Now()
-	s := n.sessions[h.WGPubkey]
-	if s == nil {
-		addr, ok := n.allocateLocked()
-		if !ok {
-			n.stats.Refused++
-			return control.Reply{Error: "this node is full; your tickets stay valid here for an hour"}
+
+	if h.Prepay {
+		c := n.credits[h.WGPubkey]
+		if c == nil || !now.Before(c.expires) {
+			c = &credit{}
+			n.credits[h.WGPubkey] = c
 		}
-		if err := n.tun.AddPeer(h.WGPubkey, addr); err != nil {
-			n.stats.Refused++
-			return control.Reply{Error: "this node could not open the tunnel; your tickets stay valid here for an hour"}
+		c.amount += bought
+		c.expires = now.Add(n.cfg.CreditLife)
+		for _, t := range tickets {
+			delete(n.paid, t.id)
 		}
-		n.used[addr] = true
-		s = &session{addr: addr, expires: now}
-		n.sessions[h.WGPubkey] = s
+		n.stats.Prepaid += uint64(len(tickets))
+		return control.Reply{OK: true, Expires: c.expires.Unix()}
+	}
+
+	reply := n.openLocked(h.WGPubkey, bought, now)
+	if !reply.OK {
+		n.stats.Refused++
+		reply.Error += "; your tickets stay valid here for an hour"
+		return reply
 	}
 	for _, t := range tickets {
 		delete(n.paid, t.id)
+	}
+	n.stats.Accepted += uint64(len(tickets))
+	return reply
+}
+
+// useCredit opens or extends a session from time paid ahead for the key.
+func (n *Node) useCredit(pub string) control.Reply {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	now := n.cfg.Now()
+	c := n.credits[pub]
+	if c == nil || !now.Before(c.expires) {
+		delete(n.credits, pub)
+		n.stats.Refused++
+		return control.Reply{Error: "no credit is held for this key"}
+	}
+	reply := n.openLocked(pub, c.amount, now)
+	if !reply.OK {
+		// The credit stays for a later try.
+		n.stats.Refused++
+		return reply
+	}
+	delete(n.credits, pub)
+	n.stats.CreditsUsed++
+	return reply
+}
+
+// openLocked opens a session for the key, or extends it, by the given time.
+func (n *Node) openLocked(pub string, d time.Duration, now time.Time) control.Reply {
+	s := n.sessions[pub]
+	if s == nil {
+		addr, ok := n.allocateLocked()
+		if !ok {
+			return control.Reply{Error: "this node is full"}
+		}
+		if err := n.tun.AddPeer(pub, addr); err != nil {
+			return control.Reply{Error: "this node could not open the tunnel"}
+		}
+		n.used[addr] = true
+		s = &session{addr: addr, expires: now}
+		n.sessions[pub] = s
 	}
 	from := s.expires
 	if from.Before(now) {
 		from = now
 	}
-	s.expires = from.Add(time.Duration(len(tickets)) * n.cfg.SessionLength)
-	n.stats.Accepted += uint64(len(tickets))
+	s.expires = from.Add(d)
 	return control.Reply{OK: true, TunnelIP: s.addr.String(), Expires: s.expires.Unix()}
 }
 
@@ -528,6 +605,11 @@ func (n *Node) Expire() int {
 			delete(n.paid, id)
 		}
 	}
+	for pub, c := range n.credits {
+		if !now.Before(c.expires) {
+			delete(n.credits, pub)
+		}
+	}
 	return ended
 }
 
@@ -537,5 +619,6 @@ func (n *Node) Stats() Stats {
 	defer n.mu.Unlock()
 	s := n.stats
 	s.Open = len(n.sessions)
+	s.Credits = len(n.credits)
 	return s
 }

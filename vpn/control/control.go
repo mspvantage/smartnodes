@@ -7,6 +7,12 @@
 // talking to the registered node. The client's own key is created fresh for
 // every exchange and identifies nothing.
 //
+// A Hello either pays for a session now, pays ahead for a later one (an exit
+// credit, with Prepay set), or opens a session from a credit bought earlier
+// (no tickets). Paying an exit ahead keeps the moment its ticket is redeemed
+// unrelated to the moment the session opens, so the chain cannot be used to
+// pair an entry node with an exit node.
+//
 // One exchange is two messages over TCP:
 //
 //	client -> node   handshake message 1, carrying a Hello (tickets and the
@@ -71,7 +77,11 @@ type Hello struct {
 	// Tickets are spent tickets naming this node, in standard base64.
 	Tickets []string `json:"tickets"`
 	// WGPubkey is the session's WireGuard public key, in standard base64.
+	// With Prepay, it is the key the credit is held for.
 	WGPubkey string `json:"wg_pubkey"`
+	// Prepay asks the node to hold the tickets as credit for a session that
+	// opens later with WGPubkey, instead of opening one now.
+	Prepay bool `json:"prepay,omitempty"`
 }
 
 // Reply is what the node answers.
@@ -80,7 +90,8 @@ type Reply struct {
 	Error string `json:"error,omitempty"`
 	// TunnelIP is the client's address inside the tunnel.
 	TunnelIP string `json:"tunnel_ip,omitempty"`
-	// Expires is when the session ends unless renewed, in Unix seconds.
+	// Expires is when the session ends unless renewed, in Unix seconds. For
+	// a prepayment, it is when the credit lapses if unused.
 	Expires int64 `json:"expires,omitempty"`
 }
 
@@ -267,8 +278,11 @@ func parseHello(payload []byte) (Hello, error) {
 	if hello.Version != Version {
 		return Hello{}, fmt.Errorf("control: unsupported version %d", hello.Version)
 	}
-	if len(hello.Tickets) == 0 || len(hello.Tickets) > MaxTickets {
-		return Hello{}, fmt.Errorf("control: %d tickets, want 1-%d", len(hello.Tickets), MaxTickets)
+	if len(hello.Tickets) > MaxTickets {
+		return Hello{}, fmt.Errorf("control: %d tickets, want at most %d", len(hello.Tickets), MaxTickets)
+	}
+	if hello.Prepay && len(hello.Tickets) == 0 {
+		return Hello{}, errors.New("control: a prepayment needs tickets")
 	}
 	if _, err := DecodePublicKey(hello.WGPubkey); err != nil {
 		return Hello{}, err

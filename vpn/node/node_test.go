@@ -619,3 +619,119 @@ func TestNewChecksConfig(t *testing.T) {
 		}
 	}
 }
+
+func (wd *world) prepay(pub string, tickets ...string) control.Reply {
+	return wd.n.HandleHello(control.Hello{Version: control.Version, KeyID: keyID, Tickets: tickets, WGPubkey: pub, Prepay: true})
+}
+
+// Paying ahead: the ticket is redeemed at once, no session opens, and a
+// later Hello with no tickets opens the session from the credit without
+// touching the chain.
+func TestPrepaidCredit(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/24")
+	pub := wgKey(t)
+	r := wd.prepay(pub, wd.w.ticket(t, nodeID), wd.w.ticket(t, nodeID))
+	if !r.OK || r.TunnelIP != "" || r.Expires != wd.now.Add(24*time.Hour).Unix() {
+		t.Fatalf("prepay %+v", r)
+	}
+	if wd.tun.count() != 0 {
+		t.Fatal("a prepayment opened a session")
+	}
+	if wd.chain.redeemedTxs() != 1 {
+		t.Fatal("prepaid tickets were not redeemed at once")
+	}
+	if s := wd.n.Stats(); s.Credits != 1 || s.Prepaid != 2 || s.Open != 0 {
+		t.Fatalf("stats %+v", s)
+	}
+
+	// Hours later the client opens the session from its credit.
+	wd.advance(5 * time.Hour)
+	r = wd.hello(pub)
+	if !r.OK || r.TunnelIP != "10.77.0.2" || r.Expires != wd.now.Add(2*time.Hour).Unix() {
+		t.Fatalf("use credit %+v", r)
+	}
+	if wd.chain.redeemedTxs() != 1 {
+		t.Fatal("using a credit touched the chain")
+	}
+	if s := wd.n.Stats(); s.Credits != 0 || s.CreditsUsed != 1 || s.Open != 1 {
+		t.Fatalf("stats %+v", s)
+	}
+	// A credit is used once.
+	if r := wd.hello(pub); r.OK {
+		t.Fatal("a credit was used twice")
+	}
+}
+
+func TestCreditRefusals(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/24")
+	if r := wd.hello(wgKey(t)); r.OK {
+		t.Fatal("opened a session with no credit")
+	}
+	if r := wd.prepay(wgKey(t)); r.OK {
+		t.Fatal("a prepayment without tickets was accepted")
+	}
+	// A credit lapses after a day.
+	pub := wgKey(t)
+	wd.prepay(pub, wd.w.ticket(t, nodeID))
+	wd.advance(24 * time.Hour)
+	if r := wd.hello(pub); r.OK {
+		t.Fatal("a lapsed credit was used")
+	}
+	// Bad tickets buy no credit.
+	pub2 := wgKey(t)
+	used := wd.w.ticket(t, nodeID)
+	wd.hello(wgKey(t), used)
+	if r := wd.prepay(pub2, used); r.OK {
+		t.Fatal("a spent ticket bought credit")
+	}
+	if r := wd.prepay(pub2, wd.w.ticket(t, nodeID+1)); r.OK {
+		t.Fatal("another node's ticket bought credit")
+	}
+	if r := wd.hello(pub2); r.OK {
+		t.Fatal("a refused prepayment left a credit")
+	}
+}
+
+func TestCreditsAddUpAndPrune(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/29")
+	pub := wgKey(t)
+	wd.prepay(pub, wd.w.ticket(t, nodeID))
+	wd.prepay(pub, wd.w.ticket(t, nodeID))
+	if r := wd.hello(pub); !r.OK || r.Expires != wd.now.Add(2*time.Hour).Unix() {
+		t.Fatalf("two prepayments %+v", r)
+	}
+	// A credit used for an open session extends it.
+	wd.prepay(pub, wd.w.ticket(t, nodeID))
+	if r := wd.hello(pub); !r.OK || r.Expires != wd.now.Add(3*time.Hour).Unix() {
+		t.Fatalf("extend from credit %+v", r)
+	}
+	// An unused credit is forgotten after a day.
+	wd.prepay(wgKey(t), wd.w.ticket(t, nodeID))
+	if wd.n.Stats().Credits != 1 {
+		t.Fatal("credit not held")
+	}
+	wd.advance(24 * time.Hour)
+	wd.n.Expire()
+	if wd.n.Stats().Credits != 0 {
+		t.Fatal("lapsed credit kept")
+	}
+}
+
+// A full node keeps the credit for a later try.
+func TestCreditKeptWhenFull(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/30")
+	// A /30 holds one client.
+	if r := wd.hello(wgKey(t), wd.w.ticket(t, nodeID)); !r.OK {
+		t.Fatal(r.Error)
+	}
+	pub := wgKey(t)
+	wd.prepay(pub, wd.w.ticket(t, nodeID))
+	if r := wd.hello(pub); r.OK {
+		t.Fatal("over capacity")
+	}
+	wd.advance(time.Hour)
+	wd.n.Expire()
+	if r := wd.hello(pub); !r.OK {
+		t.Fatalf("credit lost when the node was full: %s", r.Error)
+	}
+}

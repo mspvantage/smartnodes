@@ -121,10 +121,10 @@ func TestBadHellos(t *testing.T) {
 		many.Tickets[i] = "x"
 	}
 	cases := map[string]Hello{
-		"no tickets":     {KeyID: 1, WGPubkey: good.WGPubkey},
-		"too many":       many,
-		"bad wg key":     {KeyID: 1, Tickets: good.Tickets, WGPubkey: "AAAA"},
-		"wg key not b64": {KeyID: 1, Tickets: good.Tickets, WGPubkey: "!!"},
+		"prepay without tickets": {KeyID: 1, WGPubkey: good.WGPubkey, Prepay: true},
+		"too many":               many,
+		"bad wg key":             {KeyID: 1, Tickets: good.Tickets, WGPubkey: "AAAA"},
+		"wg key not b64":         {KeyID: 1, Tickets: good.Tickets, WGPubkey: "!!"},
 	}
 	for name, h := range cases {
 		called := false
@@ -138,6 +138,24 @@ func TestBadHellos(t *testing.T) {
 		if called || reply.OK || reply.Error == "" {
 			t.Fatalf("%s: handler called %v, reply %+v", name, called, reply)
 		}
+	}
+}
+
+// A Hello with no tickets asks to use a credit; it reaches the handler.
+func TestCreditHello(t *testing.T) {
+	priv := mustKey(t)
+	h := helloFor(t)
+	h.Tickets = nil
+	var got Hello
+	reply, err, serr := exchange(t, priv, nil, 7, 7, testChain, h, func(x Hello) Reply { got = x; return Reply{OK: true} })
+	if err != nil || serr != nil || !reply.OK || len(got.Tickets) != 0 || got.Prepay {
+		t.Fatalf("dial %v serve %v reply %+v hello %+v", err, serr, reply, got)
+	}
+	h = helloFor(t)
+	h.Prepay = true
+	_, _, _ = exchange(t, priv, nil, 7, 7, testChain, h, func(x Hello) Reply { got = x; return Reply{OK: true} })
+	if !got.Prepay || len(got.Tickets) != 1 {
+		t.Fatalf("prepay hello %+v", got)
 	}
 }
 
