@@ -30,6 +30,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
 				{
+					RpcMethod:      "TicketSpent",
+					Use:            "ticket-spent [key-id] [ticket-key-hex]",
+					Short:          "Shows whether a ticket has been redeemed",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "key_id"}, {ProtoField: "ticket_key"}},
+				},
+				{
 					RpcMethod: "ListPurchase",
 					Use:       "list-purchase",
 					Short:     "List all purchase",

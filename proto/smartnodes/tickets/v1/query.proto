@@ -38,6 +38,12 @@ service Query {
   rpc ListPurchase(QueryAllPurchaseRequest) returns (QueryAllPurchaseResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/purchase";
   }
+
+  // TicketSpent reports whether a ticket has been redeemed. Nodes ask before
+  // serving, so a ticket that was already used elsewhere is refused at once.
+  rpc TicketSpent(QueryTicketSpentRequest) returns (QueryTicketSpentResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/ticket_spent/{key_id}/{ticket_key}";
+  }
 }
 // QueryParamsRequest is request type for the Query/Params RPC method.
 message QueryParamsRequest {}
@@ -91,4 +97,17 @@ message QueryAllPurchaseRequest {
 message QueryAllPurchaseResponse {
   repeated Purchase purchase = 1 [(gogoproto.nullable) = false];
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryTicketSpentRequest defines the QueryTicketSpentRequest message.
+message QueryTicketSpentRequest {
+  // key_id is the issuer key the ticket was signed under.
+  uint64 key_id = 1;
+  // ticket_key is the ticket's one-time public key, in lowercase hex.
+  string ticket_key = 2;
+}
+
+// QueryTicketSpentResponse defines the QueryTicketSpentResponse message.
+message QueryTicketSpentResponse {
+  bool spent = 1;
 }
