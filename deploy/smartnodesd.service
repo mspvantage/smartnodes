@@ -1,0 +1,29 @@
+# SmartNodes chain node (full node or validator), run by Cosmovisor so that
+# approved upgrades switch to the new version by themselves.
+#
+# Install: sudo cp smartnodesd.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now smartnodesd
+# Runs as the user "smartnodes", with its chain data in /home/smartnodes/.smartnodes.
+[Unit]
+Description=SmartNodes chain node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=smartnodes
+Group=smartnodes
+Environment=DAEMON_NAME=smartnodesd
+Environment=DAEMON_HOME=/home/smartnodes/.smartnodes
+Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false
+Environment=DAEMON_RESTART_AFTER_UPGRADE=true
+Environment=UNSAFE_SKIP_BACKUP=false
+ExecStart=/usr/local/bin/cosmovisor run start --home /home/smartnodes/.smartnodes
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

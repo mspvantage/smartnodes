@@ -22,12 +22,27 @@ import pathlib
 DOMAIN = "https://smartnodes.tech"
 REPO = "https://github.com/mspvantage/smartnodes"
 
+# The public test network's details. Until it launches, the guides show
+# these placeholders and a notice; at launch, fill them in and rebuild.
+NETWORK = {
+    "launched": False,
+    "chain_id": "smartnodes-test-1",
+    "genesis_url": "https://smartnodes.tech/testnet/genesis.json",
+    "genesis_sha256": "PUBLISHED_AT_LAUNCH",
+    "seeds": "PUBLISHED_AT_LAUNCH",
+    "rpc": "PUBLISHED_AT_LAUNCH",
+    "faucet": "PUBLISHED_AT_LAUNCH",
+    "issuer_key_id": "0",
+    "min_gas_price": "0.025usnode",
+}
+
 NAV = [
     ("index", "Overview"),
     ("how-it-works", "How it works"),
     ("install", "Install"),
     ("use", "Use the VPN"),
     ("run-a-node", "Run a node"),
+    ("validator", "Run a validator"),
     ("build", "Build"),
     ("tokenomics", "Token (draft)"),
     ("security", "Security"),
@@ -119,6 +134,15 @@ def build():
             domain=DOMAIN, file="" if page.stem == "index" else name, logo=LOGO,
             repo=REPO, nav=nav_html(meta.get("nav", page.stem)), body=body.replace("{repo}", REPO),
         )
+        for key, value in NETWORK.items():
+            text = text.replace("{net:" + key + "}", html.escape(str(value)))
+        if "{net:notice}" in text:
+            notice = "" if NETWORK["launched"] else (
+                '<div class="alert alert-warning"><b>The public test network has not launched yet.</b> '
+                'Values shown as <code>PUBLISHED_AT_LAUNCH</code> will be filled in here when it does. '
+                'You can practise every step now on a <a href="build.html#local">local test chain</a>.</div>')
+            text = text.replace("{net:notice}", notice)
+        assert "{net:" not in text, f"{name}: unknown network value"
         (out / name).write_text(text)
         print("wrote", out / name)
 

@@ -1,0 +1,198 @@
+title: Run a validator
+description: Step-by-step guide to running a SmartNodes validator on the test network: server, install, configure, sync, create the validator, keep it safe.
+nav: validator
+
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#about">What a validator does</a><a href="#network">Network details</a><a href="#s1">1. Prepare the server</a><a href="#s2">2. Install the programs</a><a href="#s3">3. Set up the node</a><a href="#s4">4. Get the genesis file</a><a href="#s5">5. Configure</a><a href="#s6">6. Set up Cosmovisor</a><a href="#s7">7. Start and sync</a><a href="#s8">8. Make your key</a><a href="#s9">9. Become a validator</a><a href="#s10">10. Back up</a><a href="#daily">Day to day</a><a href="#genesis">Genesis validators</a><a href="#problems">If something goes wrong</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Run a validator</h1>
+<p>Validators run the SmartNodes chain: they agree on every block and vote on its rules. This guide takes a fresh Linux server to a working validator. Every step ends with a check; do not move on until it passes.</p>
+{net:notice}
+
+<h2 id="about">What a validator does, and this chain's rules</h2>
+<ul>
+  <li>At most <b>30</b> validators are active: those with the most stake.</li>
+  <li>Commission must be between <b>5% and 20%</b>. The maximum you set when you create the validator can never be raised later, so choose it with care.</li>
+  <li><b>Half</b> of validator income is shared equally among validators whose operator stakes at least <b>5,000 SNODE</b> of their own with them. The other half goes by stake.</li>
+  <li>A validator that signs two different blocks at the same height loses part of its stake and is removed for good. This happens if the same key runs on two machines at once. Step 10 is about avoiding it.</li>
+  <li>A validator that is offline for too long is jailed: it stops earning until you unjail it.</li>
+</ul>
+<p><b>You will need:</b> a server with at least 4 CPU cores, 16 GB of memory and 200 GB of SSD storage (a starting point, which will grow), a fixed public IP address, and about an hour. Your own computer is only needed to connect to it.</p>
+
+<h2 id="network">Network details</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td>Chain id</td><td><code>{net:chain_id}</code></td></tr>
+<tr><td>Genesis file</td><td><code>{net:genesis_url}</code></td></tr>
+<tr><td>Genesis file SHA-256</td><td><code>{net:genesis_sha256}</code></td></tr>
+<tr><td>Seed nodes</td><td><code>{net:seeds}</code></td></tr>
+<tr><td>Public endpoint</td><td><code>{net:rpc}</code></td></tr>
+<tr><td>Faucet (free test SNODE)</td><td><code>{net:faucet}</code></td></tr>
+<tr><td>Minimum gas price</td><td><code>{net:min_gas_price}</code></td></tr>
+</tbody></table></div></div>
+<p>Commands below that need these values use shell variables. Set them once, in every new terminal:</p>
+<pre><code>export CHAIN_ID={net:chain_id}
+export GENESIS_URL={net:genesis_url}
+export GENESIS_SHA256={net:genesis_sha256}
+export SEEDS="{net:seeds}"</code></pre>
+
+<h2 id="s1">1. Prepare the server</h2>
+<p>Log in as a user with <code>sudo</code>. Update the system, install the tools, and open only the ports a validator needs: SSH, and 26656 for the chain's peer-to-peer traffic.</p>
+<pre><code>sudo apt update && sudo apt upgrade -y
+sudo apt install -y git build-essential jq curl ufw
+sudo ufw allow OpenSSH
+sudo ufw allow 26656/tcp
+sudo ufw enable
+sudo adduser --disabled-password --gecos "" smartnodes</code></pre>
+<p>The last line makes a separate user, <code>smartnodes</code>, that runs the node, so it has no other rights on the server.</p>
+<p><b>Check:</b> <code>sudo ufw status</code> lists OpenSSH and 26656/tcp, and <code>timedatectl</code> says <code>System clock synchronized: yes</code>. A wrong clock causes missed blocks.</p>
+
+<h2 id="s2">2. Install the programs</h2>
+<p>Install Go, then build <code>smartnodesd</code> and Cosmovisor, the helper that switches to new versions at agreed upgrades.</p>
+<pre><code>cd /tmp
+curl -LO https://go.dev/dl/go1.26.11.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.11.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' &gt;&gt; ~/.profile && source ~/.profile
+
+git clone {repo}.git ~/smartnodes
+cd ~/smartnodes
+go build -o bin/ ./cmd/smartnodesd
+sudo install -m 0755 bin/smartnodesd /usr/local/bin/
+
+go install cosmossdk.io/tools/cosmovisor/cmd/cosmovisor@latest
+sudo install -m 0755 ~/go/bin/cosmovisor /usr/local/bin/</code></pre>
+<p>For an ARM server, use <code>linux-arm64</code> in the Go file name.</p>
+<p><b>Check:</b> <code>go version</code> shows go1.26, and <code>smartnodesd version</code> prints a version. Until ready-made releases exist, build the release the network announces: <code>git checkout</code> its tag before <code>go build</code>.</p>
+
+<h2 id="s3">3. Set up the node</h2>
+<p>From here on, work as the <code>smartnodes</code> user. Choose a public name for your validator (its moniker).</p>
+<pre><code>sudo -iu smartnodes
+export CHAIN_ID={net:chain_id}
+export GENESIS_URL={net:genesis_url}
+export GENESIS_SHA256={net:genesis_sha256}
+export SEEDS="{net:seeds}"
+smartnodesd init "your-validator-name" --chain-id $CHAIN_ID</code></pre>
+<p>The <code>export</code> lines set the network details for this user's session. If you log out and back in, run them again.</p>
+<p><b>Check:</b> <code>ls ~/.smartnodes/config</code> shows <code>config.toml</code>, <code>app.toml</code>, <code>genesis.json</code>, <code>node_key.json</code> and <code>priv_validator_key.json</code>.</p>
+
+<h2 id="s4">4. Get the genesis file</h2>
+<p>The genesis file is the network's starting state. Every validator must have exactly the same one, so check its fingerprint.</p>
+<pre><code>curl -fsSL "$GENESIS_URL" -o ~/.smartnodes/config/genesis.json
+echo "$GENESIS_SHA256  $HOME/.smartnodes/config/genesis.json" | sha256sum -c -
+smartnodesd genesis validate</code></pre>
+<p><b>Check:</b> <code>sha256sum</code> prints <code>OK</code>, and the last command says the file is valid. If the fingerprint does not match, stop: you have the wrong file.</p>
+
+<h2 id="s5">5. Configure</h2>
+<pre><code>sed -i -e "s|^seeds = .*|seeds = \"$SEEDS\"|" \
+       -e "s|^external_address = .*|external_address = \"YOUR_PUBLIC_IP:26656\"|" ~/.smartnodes/config/config.toml
+smartnodesd config set app minimum-gas-prices {net:min_gas_price}
+smartnodesd config set client chain-id $CHAIN_ID
+smartnodesd config set client keyring-backend file</code></pre>
+<p>Replace <code>YOUR_PUBLIC_IP</code> with the server's address. The first command edits <code>config.toml</code> directly, because <code>smartnodesd config set</code> only changes <code>app.toml</code> and <code>client.toml</code>. The <code>file</code> keyring keeps keys encrypted with a password you choose.</p>
+<p><b>Check:</b> <code>grep -E '^(seeds|external_address)' ~/.smartnodes/config/config.toml</code> shows your values.</p>
+
+<h2 id="s6">6. Set up Cosmovisor</h2>
+<pre><code>export DAEMON_NAME=smartnodesd DAEMON_HOME=$HOME/.smartnodes
+cosmovisor init /usr/local/bin/smartnodesd
+exit</code></pre>
+<p><code>exit</code> returns you to your own user.</p>
+<p><b>Check:</b> <code>sudo ls /home/smartnodes/.smartnodes/cosmovisor/current/bin</code> shows <code>smartnodesd</code>.</p>
+
+<h2 id="s7">7. Start the node and let it sync</h2>
+<pre><code>sudo cp ~/smartnodes/deploy/smartnodesd.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now smartnodesd
+journalctl -fu smartnodesd</code></pre>
+<p>The log should show blocks being received. Press Ctrl+C to stop watching; the node keeps running.</p>
+<p><b>Check:</b> wait until this prints <code>false</code>, which means the node has caught up with the network. It can take from minutes to hours.</p>
+<pre><code>smartnodesd status | jq .sync_info.catching_up</code></pre>
+<p>If it stays at block 0 with no peers, see <a href="#problems">If something goes wrong</a>.</p>
+
+<h2 id="s8">8. Make your validator's key</h2>
+<pre><code>sudo -iu smartnodes
+smartnodesd keys add validator</code></pre>
+<p>It asks for a keyring password, then prints an address and <b>24 words. Write the words on paper and keep them offline.</b> They are the only way to recover the key; anyone who has them controls it. Never type them into a website or a message.</p>
+<p>Get test SNODE from the faucet for the printed address, enough for your stake plus fees (at least 5,000 SNODE to receive the equal share).</p>
+<p><b>Check:</b> <code>smartnodesd query bank balances $(smartnodesd keys show validator -a)</code> shows your test SNODE (1 SNODE = 1,000,000 usnode).</p>
+
+<h2 id="s9">9. Become a validator</h2>
+<p>Only once step 7's check prints <code>false</code>. Write a file describing your validator:</p>
+<pre><code>cat &gt; ~/validator.json &lt;&lt;JSON
+{
+  "pubkey": $(smartnodesd comet show-validator),
+  "amount": "5000000000usnode",
+  "moniker": "your-validator-name",
+  "identity": "",
+  "website": "",
+  "security": "",
+  "details": "",
+  "commission-rate": "0.10",
+  "commission-max-rate": "0.20",
+  "commission-max-change-rate": "0.01",
+  "min-self-delegation": "1"
+}
+JSON
+smartnodesd tx staking create-validator ~/validator.json --from validator \
+  --gas auto --gas-adjustment 1.5 --gas-prices {net:min_gas_price}</code></pre>
+<ul>
+  <li><code>amount</code> is your own stake: 5,000 SNODE here.</li>
+  <li><code>commission-rate</code> is what you charge now: 10% here. It must be at least 5%.</li>
+  <li><code>commission-max-rate</code> can never be raised later, and may not be above 20%.</li>
+</ul>
+<p><b>Check:</b> the command prints <code>code: 0</code>. Then:</p>
+<pre><code>smartnodesd query staking validator $(smartnodesd keys show validator --bech val -a) | grep -E 'moniker|status'</code></pre>
+<p>shows your name and <code>BOND_STATUS_BONDED</code>, once you are among the 30 with the most stake.</p>
+
+<h2 id="s10">10. Back up, and never run the key twice</h2>
+<ul>
+  <li>Copy <code>~/.smartnodes/config/priv_validator_key.json</code> to safe offline storage. It is the key that signs blocks.</li>
+  <li><b>Never start a second machine with the same key while the first is running</b>, not even briefly to test. Two machines signing for one validator is double-signing: part of the stake is burned and the validator is removed for good.</li>
+  <li>To move to a new server: stop the old one, make sure it cannot restart (<code>sudo systemctl disable --now smartnodesd</code>), wait for a few blocks, and only then start the new one.</li>
+</ul>
+<p>Type <code>exit</code> to return to your own user.</p>
+
+<h2 id="daily">Day to day</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td>Is it running and caught up?</td><td><code>smartnodesd status | jq .sync_info</code></td></tr>
+<tr><td>Watch the log</td><td><code>journalctl -fu smartnodesd</code></td></tr>
+<tr><td>Vote on a proposal</td><td><code>smartnodesd tx gov vote ID yes --from validator --gas auto --gas-adjustment 1.5 --gas-prices {net:min_gas_price}</code></td></tr>
+<tr><td>Collect rewards and commission</td><td><code>smartnodesd tx distribution withdraw-rewards $(smartnodesd keys show validator --bech val -a) --commission --from validator --gas auto --gas-adjustment 1.5 --gas-prices {net:min_gas_price}</code></td></tr>
+<tr><td>Back after being jailed for downtime</td><td><code>smartnodesd tx slashing unjail --from validator --gas auto --gas-adjustment 1.5 --gas-prices {net:min_gas_price}</code></td></tr>
+<tr><td>Change your public details</td><td><code>smartnodesd tx staking edit-validator --details "..." --from validator ...</code></td></tr>
+</tbody></table></div></div>
+<p>Run these as the <code>smartnodes</code> user (<code>sudo -iu smartnodes</code>).</p>
+<h3>Upgrades</h3>
+<p>Upgrades are agreed by governance vote and happen at a set block. Before that block, build the announced version and put it where Cosmovisor looks for it, under the upgrade's name:</p>
+<pre><code>sudo -iu smartnodes
+mkdir -p ~/.smartnodes/cosmovisor/upgrades/UPGRADE_NAME/bin
+cp /path/to/new/smartnodesd ~/.smartnodes/cosmovisor/upgrades/UPGRADE_NAME/bin/</code></pre>
+<p>At the upgrade block the node stops, Cosmovisor switches to the new version and starts it again. Watch the log at that time.</p>
+
+<h2 id="genesis">Genesis validators (invited, Phase A)</h2>
+<p>The first validators are in the genesis file from the start. If you were invited:</p>
+<ol>
+  <li>Do steps 1 to 3, and step 8 to make your key. Send the address to the coordinator, who gives it test SNODE in the draft genesis file.</li>
+  <li>Put the draft genesis file you receive in <code>~/.smartnodes/config/genesis.json</code>, then make your signed genesis transaction:
+<pre><code>smartnodesd genesis gentx validator 5000000000usnode --chain-id $CHAIN_ID \
+  --moniker "your-validator-name" --commission-rate 0.10 --commission-max-rate 0.20 --commission-max-change-rate 0.01</code></pre></li>
+  <li>Send the file it names (in <code>~/.smartnodes/config/gentx/</code>) to the coordinator. It holds only public information.</li>
+  <li>When the final genesis file is published, continue from step 4. Skip step 9: you are already a validator.</li>
+</ol>
+
+<h2 id="problems">If something goes wrong</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>No peers, stuck at block 0</td><td>Check the seeds in step 5, that port 26656 is open (<code>sudo ufw status</code>), and that your provider's firewall allows it too.</td></tr>
+<tr><td><code>sha256sum</code> says FAILED</td><td>Wrong genesis file. Download it again from the address above.</td></tr>
+<tr><td>"maximum commission is above the ceiling"</td><td><code>commission-max-rate</code> is above 0.20. Lower it.</td></tr>
+<tr><td>"insufficient fees"</td><td>Add <code>--gas-prices {net:min_gas_price}</code> to the command.</td></tr>
+<tr><td>"account not found"</td><td>The key has no test SNODE yet: use the faucet, and wait a block.</td></tr>
+<tr><td>Status <code>BOND_STATUS_UNBONDED</code></td><td>You are not among the 30 with the most stake, or the node is not caught up.</td></tr>
+<tr><td>Jailed</td><td>The node was offline. Fix it, wait until it has caught up, then unjail (Day to day).</td></tr>
+</tbody></table></div></div>
+<p>Still stuck? Open an issue on <a href="{repo}/issues">GitHub</a> with the command you ran and what it printed. Never include your 24 words or any key file.</p>
+</article></div></div>

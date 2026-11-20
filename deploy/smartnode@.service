@@ -1,0 +1,20 @@
+# A SmartNodes VPN node: entry, exit or bridge. One copy per node, each with
+# its own settings file: smartnode@entry reads /etc/smartnode/entry.env.
+#
+# Install: sudo cp smartnode@.service /etc/systemd/system/
+#          sudo cp node.env.example /etc/smartnode/entry.env   (then edit it)
+#          sudo systemctl daemon-reload && sudo systemctl enable --now smartnode@entry
+# It runs as root because it creates network interfaces and firewall rules.
+[Unit]
+Description=SmartNodes VPN node (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/smartnode/%i.env
+ExecStart=/usr/local/bin/smartnode -strict $NODE_FLAGS
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

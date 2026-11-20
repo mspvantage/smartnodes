@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Run a node · SmartNodes</title>
-<meta name="description" content="How to run a SmartNodes entry, exit or bridge node, or a prober: requirements, bonds, keys, registering, the disguise and earnings.">
+<meta name="description" content="Step-by-step guide to running a SmartNodes entry, exit or bridge node, or a prober: server, keys, registering, starting, the disguise, earnings.">
 <link rel="canonical" href="https://smartnodes.tech/run-a-node.html">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/tabler.min.css">
@@ -30,6 +30,7 @@
         <li class="nav-item"><a class="nav-link" href="install.html"><span class="nav-link-title">Install</span></a></li>
         <li class="nav-item"><a class="nav-link" href="use.html"><span class="nav-link-title">Use the VPN</span></a></li>
         <li class="nav-item active"><a class="nav-link" href="run-a-node.html" aria-current="page"><span class="nav-link-title">Run a node</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="validator.html"><span class="nav-link-title">Run a validator</span></a></li>
         <li class="nav-item"><a class="nav-link" href="build.html"><span class="nav-link-title">Build</span></a></li>
         <li class="nav-item"><a class="nav-link" href="tokenomics.html"><span class="nav-link-title">Token (draft)</span></a></li>
         <li class="nav-item"><a class="nav-link" href="security.html"><span class="nav-link-title">Security</span></a></li>
@@ -43,12 +44,12 @@
 <main class="page-wrapper">
 <div class="container-xl sn-section"><div class="row g-5">
 <aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
-  <a href="#kinds">Kinds of node</a><a href="#needs">What you need</a><a href="#keys">1. Keys</a><a href="#register">2. Register</a><a href="#service">3. A service key</a>
-  <a href="#start">4. Start the node</a><a href="#disguise">5. Add the disguise</a><a href="#bridge">Run a bridge</a><a href="#earn">Earnings</a><a href="#jail">Checks and jail</a><a href="#leave">Leaving</a><a href="#prober">Run a prober</a>
+  <a href="#kinds">Kinds of node</a><a href="#need">What you need</a><a href="#network">Network details</a><a href="#s1">1. Prepare the server</a><a href="#s2">2. Install the programs</a><a href="#s3">3. Your operator key</a><a href="#s4">4. The node's keys</a><a href="#s5">5. Register the node</a><a href="#s6">6. Give it a service key</a><a href="#s7">7. Settings file</a><a href="#s8">8. Start it</a><a href="#s9">9. Publish the disguise</a><a href="#bridge">Run a bridge</a><a href="#earn">Earnings</a><a href="#jail">Checks and jail</a><a href="#leave">Leaving</a><a href="#prober">Run a prober</a><a href="#problems">If something goes wrong</a>
 </nav></aside>
 <article class="col-lg-9 sn-doc">
 <h1>Run a node</h1>
-<p>Anyone can run a node. You post a bond, the node serves users who pay with tickets, and independent probers check that it works. On the test network the tokens have no value, so this is the time to learn it.</p>
+<p>This guide takes a fresh Linux server to a working SmartNodes VPN node. Every step ends with a check; do not move on until it passes. On the test network tokens have no value, so this is the time to learn.</p>
+<div class="alert alert-warning"><b>The public test network has not launched yet.</b> Values shown as <code>PUBLISHED_AT_LAUNCH</code> will be filled in here when it does. You can practise every step now on a <a href="build.html#local">local test chain</a>.</div>
 
 <h2 id="kinds">Kinds of node</h2>
 <div class="card my-3"><div class="table-responsive"><table class="table card-table">
@@ -56,96 +57,176 @@
 <tbody>
 <tr><td><b>Entry</b> (tier 1)</td><td>First hop. Can offer the disguise.</td><td>Users' addresses, not where they go</td><td>1,000 SNODE</td></tr>
 <tr><td><b>Exit</b> (tier 2)</td><td>Second hop: traffic leaves to the internet from here.</td><td>Where traffic goes, not who sent it</td><td>5,000 SNODE</td></tr>
-<tr><td><b>Bridge</b></td><td>An unlisted entry, reached only through the disguise.</td><td>Like an entry</td><td>As an entry</td></tr>
+<tr><td><b>Bridge</b></td><td>An unlisted entry, reached only through the disguise.</td><td>Like an entry</td><td>At least 1,000 SNODE</td></tr>
 </tbody></table></div></div>
-<div class="alert alert-warning">Running an <b>exit</b> means other people's traffic leaves the internet from your address. Check your hosting provider's terms and your local law first. Running an entry or bridge carries less of this risk.</div>
+<div class="alert alert-warning">Running an <b>exit</b> means other people's traffic leaves to the internet from your address. Check your hosting provider's terms and your local law first. An entry or bridge carries much less of this risk. Never run an entry and an exit for the same users on the same server or provider account: two hops only protect people if they are separate.</div>
 
-<h2 id="needs">What you need</h2>
+<h2 id="need">What you need</h2>
 <ul>
-  <li>A Linux server with a public IPv4 address, root access, and the <a href="install.html">programs installed</a>.</li>
-  <li>Open ports: the node's port (TCP and UDP, 51820 by default), and TCP 443 if you offer the disguise.</li>
-  <li>An account on the chain with enough SNODE for the bond, plus a little for fees.</li>
-  <li>Swap turned off, and the system log kept in memory, so nothing about users could reach the disk. The node warns you if not.</li>
+  <li>A Linux server (Ubuntu or Debian) with a fixed public IPv4 address and root access. 2 CPU cores and 2 GB of memory are enough to start; an exit needs good bandwidth.</li>
+  <li>Your own computer, for your operator key. It controls the bond, so it never goes on the server.</li>
+  <li>Test SNODE for the bond and fees, from the faucet.</li>
+  <li>Access to the chain: a public endpoint, or better, your own chain node (see <a href="validator.html">Run a validator</a>, steps 1 to 7; a node does not need to be a validator).</li>
 </ul>
 
-<h2 id="keys">1. Make the node's key</h2>
-<pre><code>sudo mkdir -p /etc/smartnode && cd /etc/smartnode
-sudo sh -c 'umask 077; wg genkey > node.key'
-sudo wg pubkey &lt; node.key</code></pre>
-<p>The public key printed is what you register. The private key never leaves this machine.</p>
+<h2 id="network">Network details</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td>Chain id</td><td><code>smartnodes-test-1</code></td></tr>
+<tr><td>Public endpoint</td><td><code>PUBLISHED_AT_LAUNCH</code></td></tr>
+<tr><td>Faucet</td><td><code>PUBLISHED_AT_LAUNCH</code></td></tr>
+<tr><td>Minimum gas price</td><td><code>0.025usnode</code></td></tr>
+</tbody></table></div></div>
+<p>Set these in every terminal, on the server and on your computer. If you run your own chain node, use its address as <code>RPC</code>, for example <code>tcp://localhost:26657</code>.</p>
+<pre><code>export CHAIN_ID=smartnodes-test-1
+export RPC=PUBLISHED_AT_LAUNCH
+export TX="--chain-id $CHAIN_ID --node $RPC --gas auto --gas-adjustment 1.5 --gas-prices 0.025usnode"</code></pre>
 
-<h2 id="register">2. Register on the chain</h2>
-<pre><code># an entry node: endpoint, public key, tier 1, bond
-smartnodesd tx registry register-node 203.0.113.10:51820 NODE_PUBKEY 1 1000000000usnode \
-  --from operator --gas auto --gas-prices 0.025usnode
+<h2 id="s1">1. Prepare the server</h2>
+<p>On the server, update it, install the tools, and open the ports: SSH, the node's port 51820 (TCP and UDP), and 443 for the disguise on an entry or bridge.</p>
+<pre><code>sudo apt update && sudo apt upgrade -y
+sudo apt install -y git build-essential jq curl ufw wireguard-tools iproute2 iptables unzip
+sudo ufw allow OpenSSH
+sudo ufw allow 51820
+sudo ufw allow 443/tcp
+sudo ufw enable</code></pre>
+<p>Then make sure nothing about users can reach the disk: turn swap off and keep system logs in memory.</p>
+<pre><code>sudo swapoff -a
+sudo sed -i.bak '/\sswap\s/s/^/#/' /etc/fstab
+sudo mkdir -p /etc/systemd/journald.conf.d
+printf '[Journal]\nStorage=volatile\nRuntimeMaxUse=64M\n' | sudo tee /etc/systemd/journald.conf.d/smartnode.conf
+sudo systemctl restart systemd-journald</code></pre>
+<p><b>Check:</b> <code>swapon --show</code> prints nothing, and <code>sudo ufw status</code> lists 51820 and 443/tcp. Encrypted swap is also accepted, if you need swap.</p>
 
-# find its id
-smartnodesd query registry list-node -o json | jq -r '.node[] | select(.endpoint=="203.0.113.10:51820") | (.id // "0")'</code></pre>
-<p>1 SNODE is 1,000,000 usnode. For an exit use tier <code>2</code> and the exit bond. The first node registered has id 0.</p>
+<h2 id="s2">2. Install the programs</h2>
+<pre><code>cd /tmp
+curl -LO https://go.dev/dl/go1.26.11.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.11.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' &gt;&gt; ~/.profile && source ~/.profile
 
-<h2 id="service">3. Give the machine a service key</h2>
-<p>Your operator key controls the bond, so it should not sit on the server. Make a separate key that can only redeem tickets, and register it. Payments still go to the operator.</p>
-<pre><code>smartnodesd keys add nodeservice           # on the server
-smartnodesd tx registry set-service-key NODE_ID SERVICE_ADDRESS --from operator ...</code></pre>
-<p>Give the service account a little SNODE for fees.</p>
+git clone https://github.com/mspvantage/smartnodes.git ~/smartnodes
+cd ~/smartnodes
+go build -o bin/ ./cmd/...
+sudo install -m 0755 bin/smartnode bin/smartnodesd bin/smartprobe bin/smartvpn /usr/local/bin/</code></pre>
+<p>For an entry, bridge or prober, also install Xray: download the Linux file for your machine from the <a href="https://github.com/XTLS/Xray-core/releases">Xray releases page</a>, check its checksum there, then:</p>
+<pre><code>unzip Xray-linux-64.zip xray
+sudo install -m 0755 xray /usr/local/bin/xray</code></pre>
+<p><b>Check:</b> <code>smartnode -h</code> lists its options, <code>smartnodesd version</code> prints a version, and <code>xray version</code> prints one if you installed it.</p>
+<p>On <b>your own computer</b>, install <code>smartnodesd</code> the same way (<code>go build -o bin/ ./cmd/smartnodesd</code>); it is all you need there.</p>
 
-<h2 id="start">4. Start the node</h2>
-<pre><code>sudo smartnode -strict -key-file /etc/smartnode/node.key -node-id NODE_ID \
-  -listen 0.0.0.0:51820 -iface sn0 -subnet 10.77.0.0/24 -session 1h \
-  -from nodeservice -rpc tcp://CHAIN_RPC:26657</code></pre>
-<ul>
-  <li><code>-strict</code> refuses to start if session details could reach the disk, or if <code>-from</code> is the operator's own key.</li>
-  <li><code>-session</code> is how long one ticket buys.</li>
-  <li><code>-subnet</code> is the private range handed to users inside the tunnel. Give each node on one machine its own.</li>
-  <li>Exit nodes run a name server for their users; <code>-dns-upstream</code> picks where it forwards lookups.</li>
-</ul>
-<p>Run it under systemd so it restarts after a reboot. It logs only totals: sessions open, tickets redeemed.</p>
+<h2 id="s3">3. Your operator key (on your computer)</h2>
+<pre><code>smartnodesd keys add operator --keyring-backend file</code></pre>
+<p>It prints an address and <b>24 words: write them on paper and keep them offline.</b> This key owns the node's bond and receives its earnings. Get test SNODE from the faucet for this address: the bond plus about 10 SNODE for fees.</p>
+<p><b>Check:</b> <code>smartnodesd query bank balances $(smartnodesd keys show operator -a --keyring-backend file) --node $RPC</code> shows the test SNODE.</p>
 
-<h2 id="disguise">5. Add the disguise (entry nodes)</h2>
-<p>Add these options to offer the disguise on port 443:</p>
-<pre><code>  -reality-port 443 -xray /usr/local/bin/xray -reality-dir /var/lib/smartnode</code></pre>
-<p>The first time, the node makes its disguise keys and prints the exact <code>set-reality</code> command to publish them. Run that command with your operator key. By default the disguise passes visitors through to www.microsoft.com; <code>-reality-cover</code> picks another site.</p>
+<h2 id="s4">4. The node's keys (on the server)</h2>
+<p>The node has its own WireGuard key, which identifies it to users, and a <b>service key</b>, which can only redeem the tickets users pay with. Payments always go to your operator key.</p>
+<pre><code>sudo mkdir -p /etc/smartnode && sudo chmod 700 /etc/smartnode
+sudo sh -c 'umask 077; wg genkey &gt; /etc/smartnode/node.key'
+sudo wg pubkey &lt; /etc/smartnode/node.key
+
+sudo smartnodesd keys add nodeservice --keyring-backend test --home /etc/smartnode/keys</code></pre>
+<p>Note the public key from the third line and the service key's address. The service key uses the <code>test</code> keyring because the node must use it unattended; that is why it holds only a few SNODE for fees, and lives in a folder only root can read. You do not need to write down its words.</p>
+<p><b>Check:</b> <code>sudo ls -l /etc/smartnode</code> shows <code>node.key</code> readable by root only (<code>-rw-------</code>).</p>
+
+<h2 id="s5">5. Register the node (on your computer)</h2>
+<p>An entry node (tier <code>1</code>), with the server's address, the node's public key from step 4, and its bond:</p>
+<pre><code>smartnodesd tx registry register-node SERVER_IP:51820 NODE_PUBLIC_KEY 1 1000000000usnode \
+  --from operator --keyring-backend file $TX</code></pre>
+<p>For an exit, use tier <code>2</code> and <code>5000000000usnode</code>. 1 SNODE = 1,000,000 usnode. Then find the node's id:</p>
+<pre><code>smartnodesd query registry list-node --node $RPC -o json | \
+  jq -r '.node[] | select(.endpoint=="SERVER_IP:51820") | (.id // "0")'</code></pre>
+<p><b>Check:</b> the first command prints <code>code: 0</code>, and the second prints a number: your node id. The first node ever registered has id <code>0</code>.</p>
+
+<h2 id="s6">6. Give the node its service key (on your computer)</h2>
+<pre><code>smartnodesd tx registry set-service-key NODE_ID SERVICE_ADDRESS --from operator --keyring-backend file $TX
+smartnodesd tx bank send operator SERVICE_ADDRESS 5000000usnode --keyring-backend file $TX</code></pre>
+<p>The second line gives the service key 5 SNODE for fees.</p>
+<p><b>Check:</b> <code>smartnodesd query registry get-node NODE_ID --node $RPC</code> shows your <code>service_key</code>.</p>
+
+<h2 id="s7">7. Write the node's settings (on the server)</h2>
+<pre><code>sudo cp ~/smartnodes/deploy/smartnode@.service /etc/systemd/system/
+sudo cp ~/smartnodes/deploy/node.env.example /etc/smartnode/entry.env
+sudo chmod 600 /etc/smartnode/entry.env
+sudo nano /etc/smartnode/entry.env</code></pre>
+<p>In the file, replace each <code>CHANGE</code>: your node id, the chain id, and your chain endpoint's address. For an <b>exit</b>, delete the three <code>-reality</code> options. Name the file after the node (<code>entry.env</code>, <code>exit.env</code>); the name is used in the next step.</p>
+<p><b>Check:</b> <code>grep -c CHANGE /etc/smartnode/entry.env</code> prints <code>0</code>.</p>
+
+<h2 id="s8">8. Start it</h2>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable --now smartnode@entry
+journalctl -fu smartnode@entry</code></pre>
+<p><b>Check:</b> the log says the node is serving, with its id and public key, and no warnings. With <code>-strict</code> the node refuses to start if swap is on, if logs go to disk, or if it was given the operator key: the log says which. Press Ctrl+C to stop watching.</p>
+
+<h2 id="s9">9. Publish the disguise (entry nodes)</h2>
+<p>The first time an entry starts with the disguise, its log prints a <code>smartnodesd tx registry set-reality ...</code> command with the disguise's public details, ending in <code>--from &lt;operator&gt;</code>. Run that command on <b>your computer</b>, with the end changed to <code>--from operator --keyring-backend file $TX</code>.</p>
+<p><b>Check:</b> restart the node (<code>sudo systemctl restart smartnode@entry</code>); its log now says the disguise on the chain matches.</p>
+<p>Your node is now listed and serving. Probers will begin testing it within a few rounds.</p>
 
 <h2 id="bridge">Run a bridge</h2>
-<p>A bridge is an entry node whose address is on no public list. The chain holds only a fingerprint of its line.</p>
-<pre><code># 1. make the line and see its fingerprint
-sudo smartnode bridge-line -key-file /etc/smartnode/node.key -listen 127.0.0.1:51830 \
-  -reality-port 443 -reality-dir /var/lib/smartnode -bridge-address 203.0.113.50
-
-# 2. register by fingerprint alone
-smartnodesd tx registry register-bridge FINGERPRINT 1000000000usnode --from operator ...
-
-# 3. run it
-sudo smartnode -strict -key-file /etc/smartnode/node.key -node-id BRIDGE_ID -listen 127.0.0.1:51830 \
-  -iface sb0 -subnet 10.79.0.0/24 -from nodeservice -rpc tcp://CHAIN_RPC:26657 \
-  -reality-port 443 -xray /usr/local/bin/xray -reality-dir /var/lib/smartnode -bridge-address 203.0.113.50</code></pre>
+<p>A bridge is an entry node whose address is on no public list. Do steps 1 to 4 and 6, but instead of step 5:</p>
+<ol>
+  <li>On the server, make the bridge's line and see its fingerprint:
+<pre><code>sudo smartnode bridge-line -key-file /etc/smartnode/node.key -listen 127.0.0.1:51830 \
+  -reality-port 443 -reality-dir /var/lib/smartnode -bridge-address SERVER_IP</code></pre></li>
+  <li>On your computer, register it by fingerprint alone:
+<pre><code>smartnodesd tx registry register-bridge FINGERPRINT 1000000000usnode --from operator --keyring-backend file $TX</code></pre></li>
+  <li>In its settings file, use <code>-listen 127.0.0.1:51830 -iface sb0 -subnet 10.79.0.0/24</code> and add <code>-bridge-address SERVER_IP</code>; keep the three <code>-reality</code> options. Close port 51820 (<code>sudo ufw delete allow 51820</code>): a bridge is reached only through port 443.</li>
+</ol>
 <ul>
-  <li>The node's own port is closed to everything except its disguise.</li>
-  <li>It answers paid requests for its line by itself, sealed to each buyer. You are paid after a waiting period in which buyers can prove a bad answer; a proven bad answer burns part of your bond.</li>
-  <li>When the line has been given out as often as allowed, or enough of the people given it report it dead, the node logs <b>MOVE THIS BRIDGE</b>. Change the port or address, make a new line, and publish its fingerprint with <code>update-bridge</code>. The new line is handed out again.</li>
-  <li>You can also give your line privately to people you choose with <code>smartnode bridge-line ... -node-id BRIDGE_ID</code>.</li>
+  <li>The bridge answers paid requests for its line by itself. You are paid after a waiting period in which buyers can prove a false answer; a proven false answer burns 10% of the bond.</li>
+  <li>When its log says <b>MOVE THIS BRIDGE</b>, its line has been given out as often as allowed, or reported as not working. Change the port or address, make a new line (step 1), and publish its fingerprint with <code>smartnodesd tx registry update-bridge BRIDGE_ID NEW_FINGERPRINT --from operator --keyring-backend file $TX</code>.</li>
+  <li>To give your line privately to people you choose: <code>sudo smartnode bridge-line ... -node-id BRIDGE_ID</code>. Anyone who has it can find the bridge.</li>
 </ul>
 
 <h2 id="earn">Earnings</h2>
 <ul>
-  <li><b>Tickets:</b> each redeemed ticket pays you its price, less a 5% protocol fee. The node redeems them by itself.</li>
-  <li><b>Availability:</b> passing verification earns a share of the node reward pool. Claim it whenever you like: <code>smartnodesd tx verify claim-node-reward NODE_ID --from operator ...</code></li>
+  <li><b>Tickets:</b> each ticket your node redeems pays your operator key its price, less a 5% protocol fee. The node does this by itself.</li>
+  <li><b>Availability:</b> passing verification earns a share of the node reward pool. Claim it whenever you like:
+<pre><code>smartnodesd tx verify claim-node-reward NODE_ID --from operator --keyring-backend file $TX</code></pre></li>
 </ul>
-<p>See the <a href="tokenomics.html">token page</a> for how these are set. All figures are drafts.</p>
+<p>All figures are drafts; see the <a href="tokenomics.html">token page</a>.</p>
 
 <h2 id="jail">Checks and jail</h2>
-<p>Probers test your node at random through real sessions. If it fails several rounds in a row it is jailed: hidden from users until you fix it and run <code>smartnodesd tx verify unjail NODE_ID</code>. Being offline costs income, never bond. Only proven tampering with traffic burns bond. On the test network penalties are recorded but not applied.</p>
+<p>Probers test your node at random through real sessions. If it fails several rounds in a row it is jailed: hidden from users until you fix it and run <code>smartnodesd tx verify unjail NODE_ID --from operator --keyring-backend file $TX</code>. Being offline costs income, never bond; only proven tampering with traffic burns bond. Check your node's record with <code>smartnodesd query verify node-record NODE_ID --node $RPC</code>. On the test network, penalties are recorded but not applied at first.</p>
 
 <h2 id="leave">Leaving</h2>
-<pre><code>smartnodesd tx registry deregister-node NODE_ID --from operator ...
+<pre><code>smartnodesd tx registry deregister-node NODE_ID --from operator --keyring-backend file $TX
 # after the unbonding period (21 days, draft):
-smartnodesd tx registry withdraw-bond NODE_ID --from operator ...</code></pre>
+smartnodesd tx registry withdraw-bond NODE_ID --from operator --keyring-backend file $TX</code></pre>
+<p>Stop the node on the server once it has deregistered: <code>sudo systemctl disable --now smartnode@entry</code>.</p>
 
 <h2 id="prober">Run a prober</h2>
-<p>Probers are paid to test nodes. A prober posts its own bond, needs a ticket wallet to pay for test sessions, and runs on a machine that is not one of your nodes.</p>
-<pre><code>smartnodesd tx verify register-prober 1000000000usnode --from prober ...
-sudo smartprobe run -from prober -home ~/.smartnodes -wallet prober-wallet.json -xray /usr/local/bin/xray</code></pre>
-<p>Each round it asks the chain which nodes it must test, tests each one through two hops in its own network space, seals its results, and reveals them the next round.</p>
+<p>Probers are paid to test nodes. Use a server that is not one of your nodes, and do steps 1 and 2 there (Xray included).</p>
+<ol>
+  <li>On the server, make the prober's key, and note its address:
+<pre><code>sudo mkdir -p /etc/smartnode && sudo chmod 700 /etc/smartnode
+sudo smartnodesd keys add prober --keyring-backend test --home /etc/smartnode/keys</code></pre></li>
+  <li>Get test SNODE from the faucet for that address: 1,000 SNODE for the bond, plus some to buy test tickets and pay fees. Then register:
+<pre><code>sudo smartnodesd tx verify register-prober 1000000000usnode --from prober \
+  --keyring-backend test --home /etc/smartnode/keys $TX</code></pre></li>
+  <li>Give it a ticket wallet at <code>/etc/smartnode/prober-wallet.json</code> (see <a href="use.html#tickets">Get tickets</a>), readable by root only.</li>
+  <li>Install and start it:
+<pre><code>sudo cp ~/smartnodes/deploy/smartprobe.service /etc/systemd/system/
+sudo cp ~/smartnodes/deploy/probe.env.example /etc/smartnode/probe.env
+sudo chmod 600 /etc/smartnode/probe.env
+sudo nano /etc/smartnode/probe.env      # replace each CHANGE
+sudo systemctl daemon-reload && sudo systemctl enable --now smartprobe</code></pre></li>
+</ol>
+<p><b>Check:</b> <code>journalctl -fu smartprobe</code> shows it asking each round which nodes to test, then testing and reporting them.</p>
+
+<h2 id="problems">If something goes wrong</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>"swap ... is not encrypted"</td><td>Swap is on. Step 1: <code>sudo swapoff -a</code> and the <code>/etc/fstab</code> line.</td></tr>
+<tr><td>"system logs are kept on disk"</td><td>Step 1: the journald setting, then <code>sudo systemctl restart systemd-journald</code>.</td></tr>
+<tr><td>"-from is the operator's own key"</td><td>The settings file names the operator key. Use the service key (step 6).</td></tr>
+<tr><td>"insufficient fees" or "account not found"</td><td>The key has no SNODE for fees: send it some, and wait a block.</td></tr>
+<tr><td>Users cannot connect</td><td>Check the firewall (<code>sudo ufw status</code>) and your provider's firewall for 51820 TCP and UDP, and 443 for the disguise.</td></tr>
+<tr><td>The node is jailed</td><td>Look at its record (Checks and jail), fix the cause, then unjail.</td></tr>
+</tbody></table></div></div>
+<p>Still stuck? Open an issue on <a href="https://github.com/mspvantage/smartnodes/issues">GitHub</a> with what you ran and what it printed. Never include your 24 words or any key file.</p>
 </article></div></div>
 
 </main>
