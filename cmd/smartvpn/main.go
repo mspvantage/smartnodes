@@ -135,7 +135,7 @@ func ask(chainID string, p peer, h control.Hello) (control.Reply, error) {
 	defer conn.Close()
 	reply, err := control.Dial(conn, chainID, p.id, p.pub, h)
 	if err != nil {
-		return reply, err
+		return reply, fmt.Errorf("node %d did not answer properly: %w", p.id, err)
 	}
 	if !reply.OK {
 		return reply, fmt.Errorf("node %d refused: %s", p.id, reply.Error)

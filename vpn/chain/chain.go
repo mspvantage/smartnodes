@@ -274,6 +274,30 @@ func (c *CLI) Redeem(ctx context.Context, keyID uint64, tickets [][]byte) error 
 	return c.wait(ctx, sent.TxHash)
 }
 
+// Send signs and sends a transaction with the CLI's key and waits until it
+// is in a block. args are the command after "tx", such as
+// "verify", "reveal-report", "3", ...
+func (c *CLI) Send(ctx context.Context, args ...string) error {
+	full := append([]string{"tx"}, args...)
+	full = append(full,
+		"--from", c.From, "--keyring-backend", c.KeyringBackend, "--home", c.Home,
+		"--chain-id", c.ChainID, "--node", c.RPC,
+		"--gas", "auto", "--gas-adjustment", "1.5", "--gas-prices", c.GasPrices,
+		"--yes", "-o", "json")
+	raw, err := c.Run(ctx, full)
+	if err != nil {
+		return fmt.Errorf("chain: %s %s: %w", args[0], args[1], err)
+	}
+	var sent txResult
+	if err := json.Unmarshal(lastJSON(raw), &sent); err != nil || sent.TxHash == "" {
+		return fmt.Errorf("chain: unreadable answer to %s %s: %s", args[0], args[1], strings.TrimSpace(string(raw)))
+	}
+	if sent.Code != 0 {
+		return fmt.Errorf("chain: %s %s refused: %s", args[0], args[1], sent.RawLog)
+	}
+	return c.wait(ctx, sent.TxHash)
+}
+
 // wait polls until a transaction is in a block and reports its result.
 func (c *CLI) wait(ctx context.Context, hash string) error {
 	interval, timeout := c.PollInterval, c.PollTimeout
@@ -294,7 +318,7 @@ func (c *CLI) wait(ctx context.Context, hash string) error {
 			if known := classify(res.RawLog); known != nil {
 				return known
 			}
-			return fmt.Errorf("chain: redeem failed in block: %s", res.RawLog)
+			return fmt.Errorf("chain: transaction failed in block: %s", res.RawLog)
 		}
 		if time.Now().After(deadline) {
 			return fmt.Errorf("%w: transaction %s not seen in a block: %v", node.ErrUnconfirmed, hash, err)

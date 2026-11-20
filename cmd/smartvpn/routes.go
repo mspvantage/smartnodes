@@ -12,7 +12,16 @@ import (
 
 // stateFile remembers what connecting changed, so down can put it back. It
 // holds no keys and nothing about the session.
-var stateFile = "/run/smartvpn/state.json"
+var stateFile = stateFilePath()
+
+// stateFilePath is /run/smartvpn/state.json, unless SMARTVPN_STATE names
+// another file, as the prober does for each probe's own network space.
+func stateFilePath() string {
+	if p := os.Getenv("SMARTVPN_STATE"); p != "" {
+		return p
+	}
+	return "/run/smartvpn/state.json"
+}
 
 type state struct {
 	// Default is the default route before connecting, as "ip route" prints it.
