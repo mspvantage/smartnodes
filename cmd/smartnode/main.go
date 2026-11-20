@@ -54,6 +54,12 @@ func main() {
 	gasPrices := flag.String("gas-prices", "0.025usnode", "gas price for redemptions")
 	maxExchanges := flag.Int("max-exchanges", 64, "most client exchanges handled at once")
 	dnsUpstream := flag.String("dns-upstream", "", "exit nodes: resolver to pass clients' name lookups to (default: the first in /etc/resolv.conf)")
+	var ro realityOpts
+	flag.UintVar(&ro.port, "reality-port", 0, "entry nodes: also accept devices disguised with Xray REALITY on this TCP port, usually 443 (0: off)")
+	flag.StringVar(&ro.cover, "reality-cover", "www.microsoft.com:443", "entry nodes: the real website whose handshake the disguise passes along")
+	flag.StringVar(&ro.serverName, "reality-server-name", "", "entry nodes: the cover site's name devices present (default: the cover's host)")
+	flag.StringVar(&ro.xray, "xray", "xray", "path to the Xray program")
+	flag.StringVar(&ro.dir, "reality-dir", "/var/lib/smartnode", "entry nodes: folder for the disguise's keys and Xray settings")
 	strict := flag.Bool("strict", false, "refuse to start if this machine could write session details to disk, or if -from is the operator's own key")
 	flag.Parse()
 
@@ -70,13 +76,13 @@ func main() {
 	}
 
 	if err := run(*keyFile, *nodeID, *chainID, *listen, *iface, *subnet, *session, *gather, *rpc, *binary,
-		*from, *backend, *home, *gasPrices, *maxExchanges, *dnsUpstream, *strict); err != nil {
+		*from, *backend, *home, *gasPrices, *maxExchanges, *dnsUpstream, *strict, ro); err != nil {
 		log.Fatalf("smartnode: %v", err)
 	}
 }
 
 func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, session, gather time.Duration,
-	rpc, binary, from, backend, home, gasPrices string, maxExchanges int, dnsUpstream string, strict bool) error {
+	rpc, binary, from, backend, home, gasPrices string, maxExchanges int, dnsUpstream string, strict bool, ro realityOpts) error {
 	if os.Geteuid() != 0 {
 		return errors.New("must run as root, to create the WireGuard interface")
 	}
@@ -229,6 +235,15 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 			return fmt.Errorf("name server: %w", err)
 		}
 		log.Printf("answering clients' name lookups on %s", gateway)
+	}
+
+	if ro.port != 0 {
+		if role != guard.Entry {
+			return errors.New("-reality-port: only entry nodes offer a disguise; exit nodes are reached inside the entry tunnel")
+		}
+		if err := startReality(stop, ro, listenAddr, info, nodeID); err != nil {
+			return fmt.Errorf("disguise: %w", err)
+		}
 	}
 
 	log.Printf("node %d (%s) serving on %s; public key %s; one ticket buys %s", nodeID, roleName(role), listenAddr, pub, session)

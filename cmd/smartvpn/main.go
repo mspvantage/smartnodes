@@ -47,6 +47,7 @@ import (
 	"time"
 
 	"github.com/mspvantage/smartnodes/vpn/control"
+	"github.com/mspvantage/smartnodes/vpn/disguise"
 	"github.com/mspvantage/smartnodes/vpn/guard"
 	"github.com/mspvantage/smartnodes/vpn/wallet"
 	"github.com/mspvantage/smartnodes/vpn/wg"
@@ -187,6 +188,7 @@ func connect(args []string) error {
 	exitTicket := fs.String("exit-ticket", "", "ticket spent to the exit node, used if there is no usable credit")
 	exitCredit := fs.String("exit-credit", "", "credit file from 'smartvpn prepay'")
 	wait := fs.Duration("wait", 10*time.Minute, "the longest random wait between paying the exit and using it")
+	tr := addTransportFlags(fs, "wireguard")
 	_ = fs.Parse(args)
 
 	if err := needRoot(); err != nil {
@@ -215,15 +217,30 @@ func connect(args []string) error {
 		tickets[nodeID] = tickets[nodeID][1:]
 		return t, nil
 	}
-	c, err := newClient(*chainID, *keyID, *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, pay, *exitCredit, *wait)
+	c, err := newClient(*chainID, *keyID, *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, pay, *exitCredit, *wait, tr)
 	if err != nil {
 		return err
 	}
 	return c.open()
 }
 
+// transportOpts say how the entry is reached.
+type transportOpts struct {
+	transport string
+	reality   string // compact form, from the registry
+	xray      string
+}
+
+func addTransportFlags(fs *flag.FlagSet, def string) *transportOpts {
+	o := &transportOpts{}
+	fs.StringVar(&o.transport, "transport", def, "how to reach the entry node: wireguard, reality (disguised), or auto (WireGuard, then the disguise if it is blocked)")
+	fs.StringVar(&o.reality, "entry-reality", "", "the entry node's disguise from the registry, as PORT/PUBLICKEY/SHORTID/SERVERNAME/UUID")
+	fs.StringVar(&o.xray, "xray", "xray", "path to the Xray program, for the disguise")
+	return o
+}
+
 func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint string, exitID uint64, exitKey, exitEndpoint string,
-	pay func(uint64) (string, error), creditPath string, wait time.Duration) (*client, error) {
+	pay func(uint64) (string, error), creditPath string, wait time.Duration, t *transportOpts) (*client, error) {
 	if entryKey == "" || entryEndpoint == "" || exitKey == "" || exitEndpoint == "" {
 		return nil, errors.New("the entry's and exit's keys and endpoints are required")
 	}
@@ -238,10 +255,27 @@ func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint st
 	if exit.endpoint.Addr() == entry.endpoint.Addr() {
 		return nil, errors.New("the entry and exit nodes are on the same address")
 	}
-	return &client{
-		chainID: chainID, keyID: keyID, entry: entry, exit: exit, pay: pay, creditPath: creditPath, wait: wait,
-		say: func(format string, a ...any) { fmt.Printf(time.Now().Format("15:04:05 ")+format+"\n", a...) },
-	}, nil
+	c := &client{
+		chainID: chainID, keyID: keyID, entry: entry, direct: entry, exit: exit, pay: pay, creditPath: creditPath, wait: wait,
+		say:       func(format string, a ...any) { fmt.Printf(time.Now().Format("15:04:05 ")+format+"\n", a...) },
+		transport: t.transport, xray: t.xray,
+	}
+	switch t.transport {
+	case "wireguard", "reality", "auto":
+	default:
+		return nil, fmt.Errorf("-transport %q: want wireguard, reality or auto", t.transport)
+	}
+	if t.reality != "" {
+		r, err := disguise.ParseCompact(t.reality)
+		if err != nil {
+			return nil, err
+		}
+		c.reality = &r
+	}
+	if t.transport == "reality" && c.reality == nil {
+		return nil, errors.New("-transport reality needs -entry-reality")
+	}
+	return c, nil
 }
 
 // runCmd connects, then stays running: it renews both sessions from the
@@ -258,6 +292,7 @@ func runCmd(args []string) error {
 	exitEndpoint := fs.String("exit-endpoint", "", "exit node's endpoint from the registry")
 	creditDir := fs.String("credit-dir", "/var/lib/smartvpn", "folder for exit credits bought ahead")
 	wait := fs.Duration("wait", 10*time.Minute, "the longest random wait between paying an exit and first using it")
+	tr := addTransportFlags(fs, "auto")
 	_ = fs.Parse(args)
 
 	if err := needRoot(); err != nil {
@@ -274,7 +309,7 @@ func runCmd(args []string) error {
 		return err
 	}
 	creditPath := filepath.Join(*creditDir, fmt.Sprintf("credit-%d.json", *exitID))
-	c, err := newClient(w.ChainID(), w.KeyID(), *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, w.Spend, creditPath, *wait)
+	c, err := newClient(w.ChainID(), w.KeyID(), *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, w.Spend, creditPath, *wait, tr)
 	if err != nil {
 		return err
 	}

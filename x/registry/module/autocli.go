@@ -82,6 +82,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "service_key"}},
 				},
 				{
+					RpcMethod:      "SetReality",
+					Use:            "set-reality [id] [port] [public-key] [short-id] [server-name] [uuid]",
+					Short:          "Publish an entry node's REALITY disguise (smartnode prints this command); port 0 with empty values removes it",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "port"}, {ProtoField: "public_key"}, {ProtoField: "short_id"}, {ProtoField: "server_name"}, {ProtoField: "uuid"}},
+				},
+				{
 					RpcMethod:      "WithdrawBond",
 					Use:            "withdraw-bond [id]",
 					Short:          "Send a withdraw-bond tx",

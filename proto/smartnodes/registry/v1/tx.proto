@@ -44,6 +44,10 @@ service Msg {
   // SetServiceKey sets or clears the account that may redeem a node's
   // tickets on the operator's behalf. Only the operator may send it.
   rpc SetServiceKey(MsgSetServiceKey) returns (MsgSetServiceKeyResponse);
+
+  // SetReality publishes or, with port 0, withdraws an entry node's
+  // disguised way in. Only the operator may send it.
+  rpc SetReality(MsgSetReality) returns (MsgSetRealityResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -162,3 +166,19 @@ message MsgSetServiceKey {
 
 // MsgSetServiceKeyResponse defines the MsgSetServiceKeyResponse message.
 message MsgSetServiceKeyResponse {}
+
+// MsgSetReality sets an entry node's REALITY disguise. Port 0 removes it.
+message MsgSetReality {
+  option (cosmos.msg.v1.signer) = "operator";
+  option (amino.name) = "smartnodes/x/registry/MsgSetReality";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  uint32 port = 3;
+  string public_key = 4;
+  string short_id = 5;
+  string server_name = 6;
+  string uuid = 7;
+}
+
+// MsgSetRealityResponse defines the MsgSetRealityResponse message.
+message MsgSetRealityResponse {}

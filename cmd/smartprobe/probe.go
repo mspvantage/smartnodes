@@ -97,6 +97,15 @@ func (p *prober) probeNode(ctx context.Context, round uint64, target chain.NodeI
 	state := "/run/smartprobe/" + ns + ".json"
 	env := append(os.Environ(), "SMARTVPN_STATE="+state)
 
+	// An entry that offers a disguise is probed through it half the time,
+	// so it cannot advertise a way in that does not work.
+	transport := []string{"-transport", "wireguard"}
+	via := "WireGuard"
+	if entry.Reality != nil && uniform(1) == 1 {
+		transport = []string{"-transport", "reality", "-entry-reality", entry.Reality.Compact(), "-xray", p.xray}
+		via = "the disguise"
+	}
+
 	cctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(cctx, "ip", "netns", "exec", ns, p.smartvpn, "connect",
@@ -104,6 +113,7 @@ func (p *prober) probeNode(ctx context.Context, round uint64, target chain.NodeI
 		"-entry-id", strconv.FormatUint(entry.ID, 10), "-entry-key", entry.Pubkey, "-entry-endpoint", entry.Endpoint, "-entry-ticket", entryTicket,
 		"-exit-id", strconv.FormatUint(exit.ID, 10), "-exit-key", exit.Pubkey, "-exit-endpoint", exit.Endpoint, "-exit-ticket", exitTicket,
 		"-wait", p.wait.String())
+	cmd.Args = append(cmd.Args, transport...)
 	cmd.Env = env
 	out, _ := cmd.CombinedOutput()
 	hop, known2 := hopReached(string(out), entry.ID, exit.ID)
@@ -139,8 +149,8 @@ func (p *prober) probeNode(ctx context.Context, round uint64, target chain.NodeI
 	if err != nil {
 		return probe.Report{}, false
 	}
-	log.Printf("round %d: node %d (%s) through %s %d: %s, %.0f Mbps, content %s, name lookups %s",
-		round, target.ID, map[probe.Role]string{probe.Entry: "entry", probe.Exit: "exit"}[role], partnerName, partner.ID,
+	log.Printf("round %d: node %d (%s) through %s %d, entry reached by %s: %s, %.0f Mbps, content %s, name lookups %s",
+		round, target.ID, map[probe.Role]string{probe.Entry: "entry", probe.Exit: "exit"}[role], partnerName, partner.ID, via,
 		resultName(result), m.Mbps, okWord(m.IntegrityOK || hop != probe.BothHops), okWord(m.DNSOK || hop != probe.BothHops))
 	return probe.Report{Round: round, NodeID: target.ID, Result: result, Speed: band, Salt: salt}, true
 }

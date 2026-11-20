@@ -198,3 +198,22 @@ func TestServiceKeyAndSigner(t *testing.T) {
 		t.Fatalf("call %s", got)
 	}
 }
+
+func TestNodeReality(t *testing.T) {
+	s := &script{answers: []func([]string) ([]byte, error){
+		ok(`{"node":{"operator":"smart1op","endpoint":"10.0.0.1:51820","tier":"1","status":"1","reality":{"port":443,"public_key":"Kuwv0McuvHt93baQG_nFirbjazMXkDlCt1302dy31GU","short_id":"0123456789abcdef","server_name":"www.example.com","uuid":"d5c8eb88-00c3-463e-a6ec-a0f55502cd87"}}}`),
+		ok(`{"node":{"operator":"smart1op","reality":{"port":443,"public_key":"bad"}}}`),
+		ok(`{"node":{"operator":"smart1op"}}`),
+	}}
+	c := newCLI(s)
+	n, err := c.Node(context.Background(), 0)
+	if err != nil || n.Reality == nil || n.Reality.Port != 443 || n.Reality.ServerName != "www.example.com" {
+		t.Fatalf("%+v %v", n.Reality, err)
+	}
+	if n, _ := c.Node(context.Background(), 0); n.Reality != nil {
+		t.Fatal("a broken disguise was accepted")
+	}
+	if n, _ := c.Node(context.Background(), 0); n.Reality != nil {
+		t.Fatal("a disguise appeared from nowhere")
+	}
+}

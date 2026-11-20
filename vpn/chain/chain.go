@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mspvantage/smartnodes/vpn/disguise"
 	"github.com/mspvantage/smartnodes/vpn/node"
 )
 
@@ -123,10 +124,12 @@ type NodeInfo struct {
 	Operator string
 	// ServiceKey is the account allowed to redeem for the operator, if any.
 	ServiceKey string
-	Endpoint   string
-	Pubkey     string
-	Tier       uint64
-	Status     uint64
+	// Reality is the entry node's disguised way in, if it offers one.
+	Reality  *disguise.Reality
+	Endpoint string
+	Pubkey   string
+	Tier     uint64
+	Status   uint64
 }
 
 // Registry tiers and statuses, as the registry module numbers them.
@@ -145,7 +148,40 @@ type nodeJSON struct {
 	Status   number `json:"status"`
 	Service  string `json:"service_key"`
 	// The chain's JSON may also spell it in camel case.
-	ServiceCamel string `json:"serviceKey"`
+	ServiceCamel string       `json:"serviceKey"`
+	Reality      *realityJSON `json:"reality"`
+}
+
+type realityJSON struct {
+	Port        number `json:"port"`
+	PublicKey   string `json:"public_key"`
+	PublicKeyC  string `json:"publicKey"`
+	ShortID     string `json:"short_id"`
+	ShortIDC    string `json:"shortId"`
+	ServerName  string `json:"server_name"`
+	ServerNameC string `json:"serverName"`
+	UUID        string `json:"uuid"`
+}
+
+func either(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+// reality reads a published disguise; one that does not check out is
+// treated as not offered.
+func (r *realityJSON) reality() *disguise.Reality {
+	if r == nil || r.Port == 0 || r.Port > 65535 {
+		return nil
+	}
+	out := disguise.Reality{Port: uint16(r.Port), PublicKey: either(r.PublicKey, r.PublicKeyC),
+		ShortID: either(r.ShortID, r.ShortIDC), ServerName: either(r.ServerName, r.ServerNameC), UUID: r.UUID}
+	if out.Validate() != nil {
+		return nil
+	}
+	return &out
 }
 
 func (n nodeJSON) info() NodeInfo {
@@ -153,7 +189,7 @@ func (n nodeJSON) info() NodeInfo {
 	if service == "" {
 		service = n.ServiceCamel
 	}
-	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, ServiceKey: service, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
+	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, ServiceKey: service, Reality: n.Reality.reality(), Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
 }
 
 // SignerAddress returns the address of the key that signs redemptions.

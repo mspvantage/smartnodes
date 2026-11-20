@@ -33,6 +33,11 @@ type state struct {
 	// Close lists the sessions to end at the nodes on disconnect. It holds
 	// session public keys and node details, nothing secret.
 	Close []closeTarget `json:"close,omitempty"`
+	// Xray is the local disguise program, if the entry is reached through
+	// one: its process id, program and settings file.
+	XrayPID    int    `json:"xray_pid,omitempty"`
+	Xray       string `json:"xray,omitempty"`
+	XrayConfig string `json:"xray_config,omitempty"`
 }
 
 // closeTarget is one open session.

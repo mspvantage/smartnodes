@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -145,5 +146,22 @@ func TestResolverRoundTrip(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(resolvPath); string(got) != "nameserver 192.168.1.1\n" {
 		t.Fatalf("not restored: %q", got)
+	}
+}
+
+func TestBlockedEntryDetection(t *testing.T) {
+	if !unreachable(errors.New("cannot reach node 3: i/o timeout"), 3) || !unreachable(errors.New("node 3 did not answer properly: x"), 3) {
+		t.Fatal("unreachable entry not recognised")
+	}
+	if unreachable(errors.New("node 3 refused: this node is full"), 3) || unreachable(errors.New("cannot reach node 31: x"), 3) {
+		t.Fatal("a refusal or another node counted as blocked")
+	}
+	output = func(string, ...string) (string, error) { return "abc=\t0\n", nil }
+	if handshaken("sv0") {
+		t.Fatal("no handshake counted as one")
+	}
+	output = func(string, ...string) (string, error) { return "abc=\t1763600000\n", nil }
+	if !handshaken("sv0") {
+		t.Fatal("handshake missed")
 	}
 }

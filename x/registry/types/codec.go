@@ -11,6 +11,7 @@ func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 		&MsgSponsorNode{},
 		&MsgFundSponsorPool{},
 		&MsgSetServiceKey{},
+		&MsgSetReality{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),

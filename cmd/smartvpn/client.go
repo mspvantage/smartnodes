@@ -4,13 +4,17 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/flynn/noise"
 	"github.com/mspvantage/smartnodes/vpn/control"
+	"github.com/mspvantage/smartnodes/vpn/disguise"
 	"github.com/mspvantage/smartnodes/vpn/guard"
 	"github.com/mspvantage/smartnodes/vpn/wg"
 )
@@ -32,6 +36,124 @@ type client struct {
 
 	outer, inner        noise.DHKey
 	entryEnds, exitEnds time.Time
+
+	// transport is how the entry is reached: "wireguard", "reality", or
+	// "auto", which tries WireGuard and falls back to the disguise.
+	transport string
+	// reality is the entry's published disguise, if it offers one.
+	reality *disguise.Reality
+	xray    string
+	// direct is the entry as published; entry may instead point at the
+	// local end of the disguise.
+	direct peer
+}
+
+// errEntryBlocked means WireGuard to the entry node seems to be blocked on
+// the way: the node could not be reached at all, or its tunnel never
+// answered.
+var errEntryBlocked = errors.New("WireGuard to the entry node seems blocked")
+
+// open brings up both tunnels, through the disguise if asked or if
+// WireGuard turns out to be blocked. On failure it puts the machine back as
+// it was.
+func (c *client) open() error {
+	switch c.transport {
+	case "reality":
+		if c.reality == nil {
+			return errors.New("the entry node offers no disguise")
+		}
+		return c.openWith(true)
+	case "auto":
+		err := c.openWith(false)
+		if errors.Is(err, errEntryBlocked) && c.reality != nil {
+			c.say("%v; trying the disguise instead", err)
+			return c.openWith(true)
+		}
+		return err
+	default:
+		return c.openWith(false)
+	}
+}
+
+// handshaken reports whether a WireGuard interface has completed a
+// handshake with its peer.
+func handshaken(name string) bool {
+	out, err := output("wg", "show", name, "latest-handshakes")
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		f := strings.Fields(line)
+		if len(f) == 2 && f[1] != "0" {
+			return true
+		}
+	}
+	return false
+}
+
+// reached reports whether an error from asking a node means the node was
+// never reached, as when something on the way blocks it.
+func unreachable(err error, id uint64) bool {
+	s := err.Error()
+	return strings.Contains(s, fmt.Sprintf("cannot reach node %d:", id)) || strings.Contains(s, fmt.Sprintf("node %d did not answer properly:", id))
+}
+
+// startXray runs the device's end of the disguise and points the entry at
+// it.
+func (c *client) startXray() error {
+	xray, err := exec.LookPath(c.xray)
+	if err != nil {
+		return fmt.Errorf("the Xray program was not found (%s); install it or give -xray", c.xray)
+	}
+	local, err := freeLocalPort()
+	if err != nil {
+		return err
+	}
+	cfg, err := disguise.ClientConfig(*c.reality, c.direct.endpoint.Addr(), local, c.direct.endpoint)
+	if err != nil {
+		return err
+	}
+	path, err := disguise.WriteConfig(filepath.Dir(stateFile), filepath.Base(stateFile)+".xray.json", cfg)
+	if err != nil {
+		return err
+	}
+	pid, err := disguise.StartDetached(xray, path)
+	if err != nil {
+		return err
+	}
+	st, err := readState()
+	if err != nil {
+		return err
+	}
+	st.XrayPID, st.Xray, st.XrayConfig = pid, xray, path
+	if err := writeState(st); err != nil {
+		return err
+	}
+	if err := disguise.WaitListening(local.String(), 10*time.Second); err != nil {
+		return err
+	}
+	c.entry.endpoint = local
+	c.say("reaching entry node %d through the disguise, looking like a visit to %s", c.entry.id, c.reality.ServerName)
+	return nil
+}
+
+// freeLocalPort finds a loopback port free for both TCP and UDP.
+func freeLocalPort() (netip.AddrPort, error) {
+	for i := 0; i < 20; i++ {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			return netip.AddrPort{}, err
+		}
+		addr := l.Addr().String()
+		u, err := net.ListenPacket("udp", addr)
+		l.Close()
+		if err != nil {
+			continue
+		}
+		u.Close()
+		return netip.ParseAddrPort(addr)
+	}
+	return netip.AddrPort{}, errors.New("no free local port")
 }
 
 func killSwitch() guard.KillSwitch {
@@ -40,9 +162,10 @@ func killSwitch() guard.KillSwitch {
 
 func pubOf(k noise.DHKey) string { return base64.StdEncoding.EncodeToString(k.Public) }
 
-// open brings up both tunnels. On failure it puts the machine back as it was.
-func (c *client) open() (err error) {
-	if err := prepareRoutes(c.entry.endpoint.Addr()); err != nil {
+// openWith brings up both tunnels, through the disguise or not.
+func (c *client) openWith(disguised bool) (err error) {
+	c.entry = c.direct
+	if err := prepareRoutes(c.direct.endpoint.Addr()); err != nil {
 		return err
 	}
 	defer func() {
@@ -50,9 +173,19 @@ func (c *client) open() (err error) {
 			teardown()
 		}
 	}()
-	// From here on nothing leaves outside the tunnels.
-	if err := killSwitch().Apply(c.entry.endpoint); err != nil {
+	// From here on nothing leaves outside the tunnels. Through the
+	// disguise, the only way out is its TCP port at the entry.
+	allow := c.direct.endpoint
+	if disguised {
+		allow = netip.AddrPortFrom(c.direct.endpoint.Addr(), c.reality.Port)
+	}
+	if err := killSwitch().Apply(allow); err != nil {
 		return fmt.Errorf("kill switch: %w", err)
+	}
+	if disguised {
+		if err := c.startXray(); err != nil {
+			return err
+		}
 	}
 
 	// Hop one: the entry node.
@@ -65,6 +198,9 @@ func (c *client) open() (err error) {
 	}
 	reply, err := ask(c.chainID, c.entry, control.Hello{KeyID: c.keyID, Tickets: strings.Fields(ticket), WGPubkey: pubOf(c.outer)})
 	if err != nil {
+		if !disguised && unreachable(err, c.entry.id) {
+			return fmt.Errorf("%w (%v)", errEntryBlocked, err)
+		}
 		return err
 	}
 	outerAddr, err := tunnelAddr(reply)
@@ -84,6 +220,18 @@ func (c *client) open() (err error) {
 	_ = rememberClose(closeTarget{ChainID: c.chainID, NodeID: c.entry.id, NodeKey: c.entry.key, Endpoint: c.entry.endpoint.String(), WGPubkey: pubOf(c.outer)})
 	c.say("entry node %d: tunnel address %s", c.entry.id, outerAddr)
 
+	// Before paying the exit, check the entry's tunnel carries anything at
+	// all: a censor may block WireGuard yet let the payment connection
+	// through. Opening a connection to the exit makes the tunnel shake
+	// hands; no ticket is spent on it.
+	if !disguised {
+		if c2, err := net.DialTimeout("tcp", c.exit.endpoint.String(), 8*time.Second); err == nil {
+			c2.Close()
+		} else if !handshaken(outerIface) {
+			return fmt.Errorf("%w (its tunnel never answered)", errEntryBlocked)
+		}
+	}
+
 	// Hop two: the exit node, through the entry. A saved credit first.
 	reply, err = c.useCredit()
 	if err != nil {
@@ -91,6 +239,11 @@ func (c *client) open() (err error) {
 	}
 	if !reply.OK {
 		if reply, err = c.buyAndWait(); err != nil {
+			// The exit is reached through the entry's tunnel. If that
+			// tunnel never answered, the fault is on the way to the entry.
+			if !disguised && unreachable(err, c.exit.id) && !handshaken(outerIface) {
+				return fmt.Errorf("%w (its tunnel never answered)", errEntryBlocked)
+			}
 			return err
 		}
 	}
@@ -225,7 +378,14 @@ func (c *client) buyCredit() error {
 // teardown tells the nodes the sessions are over, then removes both tunnels
 // and the kill switch and puts routes and name servers back.
 func teardown() error {
+	st, _ := readState()
 	closeSessions(6 * time.Second)
+	defer func() {
+		if st.XrayPID != 0 {
+			disguise.StopDetached(st.XrayPID, st.Xray)
+			_ = os.Remove(st.XrayConfig)
+		}
+	}()
 	_ = iface(innerIface).Delete()
 	_ = iface(outerIface).Delete()
 	killSwitch().Remove()

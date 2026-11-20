@@ -109,6 +109,14 @@ func (n Node) ValidateBasic() error {
 	if n.ServiceKey != "" && (n.ServiceKey == n.Operator || len(n.ServiceKey) > MaxAddressLength) {
 		return errorsmod.Wrap(ErrInvalidServiceKey, "must differ from the operator and be a valid address")
 	}
+	if n.Reality != nil {
+		if n.Tier != TierEntry {
+			return errorsmod.Wrap(ErrInvalidReality, "only entry nodes offer a disguise")
+		}
+		if err := ValidateReality(*n.Reality); err != nil {
+			return err
+		}
+	}
 	// The sponsored part is part of the bond, never more than it.
 	if n.Bond.Amount.IsNil() || math.NewIntFromUint64(n.Sponsored).GT(n.Bond.Amount) {
 		return errorsmod.Wrap(ErrInvalidBond, "sponsored amount is larger than the bond")

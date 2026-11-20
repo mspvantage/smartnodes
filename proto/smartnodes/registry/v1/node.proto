@@ -25,4 +25,22 @@ message Node {
   // tickets and nothing else. Payment still goes to the operator. It lets the
   // operator's own key, which controls the bond, stay off the node's server.
   string service_key = 10 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  // reality, if set, is the node's disguised way in for devices in countries
+  // that block VPNs. Only entry nodes offer it. Nothing in it is secret.
+  Reality reality = 11;
+}
+
+// Reality describes an entry node's Xray REALITY disguise.
+message Reality {
+  // port is the TCP port it listens on, usually 443.
+  uint32 port = 1;
+  // public_key is the node's REALITY public key: 32 bytes, base64url
+  // without padding.
+  string public_key = 2;
+  // short_id is up to 16 lowercase hex characters, in pairs.
+  string short_id = 3;
+  // server_name is the cover site's name, which devices present.
+  string server_name = 4;
+  // uuid is the published VLESS user id; it grants nothing by itself.
+  string uuid = 5;
 }

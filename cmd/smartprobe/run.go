@@ -43,6 +43,7 @@ type prober struct {
 	net      *netPlan
 	self     string // path to this program
 	smartvpn string
+	xray     string
 	id       uint64
 	chainID  string
 
@@ -67,6 +68,7 @@ func run(args []string) error {
 	gasPrices := fs.String("gas-prices", "0.025usnode", "gas price for reports")
 	binary := fs.String("smartnodesd", "smartnodesd", "path to smartnodesd")
 	smartvpn := fs.String("smartvpn", "smartvpn", "path to smartvpn")
+	xray := fs.String("xray", "xray", "path to the Xray program, to probe disguised entry nodes")
 	walletPath := fs.String("wallet", "", "ticket wallet that pays for probes")
 	stateDir := fs.String("state-dir", "/var/lib/smartprobe", "folder for reports waiting to be opened")
 	uplink := fs.String("uplink", "", "this machine's internet interface (default: the one with the default route)")
@@ -127,7 +129,7 @@ func run(args []string) error {
 	}
 	defer plan.tearDownHost()
 
-	p := &prober{cli: cli, wallet: w, store: store, net: plan, self: self, smartvpn: vpnPath, id: info.ID,
+	p := &prober{cli: cli, wallet: w, store: store, net: plan, self: self, smartvpn: vpnPath, xray: *xray, id: info.ID,
 		chainID: *chainID, wait: *wait, speedURL: *speedURL, knownURLs: known,
 		minMbps: map[uint64]float64{}}
 	log.Printf("prober %d (%s) started; %d tickets in the wallet", p.id, owner, w.Left())

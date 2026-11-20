@@ -32,6 +32,8 @@ const (
 	AttributeKeySponsored      = "sponsored"
 
 	EventTypeSetServiceKey   = "registry_set_service_key"
+	EventTypeSetReality      = "registry_set_reality"
+	AttributeKeyRealityPort  = "reality_port"
 	AttributeKeyServiceKey   = "service_key"
 	EventTypeSponsorNode     = "registry_sponsor_node"
 	EventTypeFundSponsorPool = "registry_fund_sponsor_pool"
