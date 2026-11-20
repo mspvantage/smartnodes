@@ -38,6 +38,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "bridge-line" {
+		if err := bridgeLineCmd(os.Args[2:]); err != nil {
+			log.Fatalf("smartnode: %v", err)
+		}
+		return
+	}
 	keyFile := flag.String("key-file", "", "file holding the node's WireGuard private key, as made by 'wg genkey'")
 	nodeID := flag.Uint64("node-id", 0, "this node's id in the registry")
 	chainID := flag.String("chain-id", "smartnodes", "chain id")
@@ -60,6 +66,7 @@ func main() {
 	flag.StringVar(&ro.serverName, "reality-server-name", "", "entry nodes: the cover site's name devices present (default: the cover's host)")
 	flag.StringVar(&ro.xray, "xray", "xray", "path to the Xray program")
 	flag.StringVar(&ro.dir, "reality-dir", "/var/lib/smartnode", "entry nodes: folder for the disguise's keys and Xray settings")
+	flag.StringVar(&ro.bridge, "bridge-address", "", "run as a bridge, an unlisted entry node, reached only through the disguise at this public IPv4 address")
 	strict := flag.Bool("strict", false, "refuse to start if this machine could write session details to disk, or if -from is the operator's own key")
 	flag.Parse()
 
@@ -120,7 +127,30 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 	if err != nil {
 		return fmt.Errorf("reading node %d from the registry: %w", nodeID, err)
 	}
-	if info.Pubkey != pub {
+	if ro.bridge != "" {
+		// A bridge is checked by its line's fingerprint instead.
+		if ro.port == 0 {
+			return errors.New("a bridge needs -reality-port: devices reach it only through the disguise")
+		}
+		line, err := makeLine(chainID, nodeID, pub, listenAddr, &ro)
+		if err != nil {
+			return err
+		}
+		switch info.Commitment {
+		case line.Fingerprint():
+		case "":
+			return fmt.Errorf("node %d is not a bridge in the registry; register one with 'smartnode bridge-line'", nodeID)
+		default:
+			return fmt.Errorf("this bridge's line does not match node %d's fingerprint; if it moved, publish the new one with:\n  smartnodesd tx registry update-bridge %d %s --from <operator>", nodeID, nodeID, line.Fingerprint())
+		}
+		path, err := saveLine(ro.dir, line)
+		if err != nil {
+			return err
+		}
+		log.Printf("bridge %d: its line matches the chain; the line is in %s, to give only to people you choose", nodeID, path)
+	} else if info.Commitment != "" {
+		return fmt.Errorf("node %d is a bridge; run with -bridge-address and -reality-port", nodeID)
+	} else if info.Pubkey != pub {
 		return fmt.Errorf("this server's key %s does not match node %d's key in the registry", pub, nodeID)
 	}
 	if info.Status != chain.StatusActive {
@@ -198,6 +228,13 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 		return fmt.Errorf("firewall: %w", err)
 	}
 	defer func() { _ = fw.Remove() }()
+	if ro.bridge != "" {
+		lock := guard.BridgeLock{Iface: iface, Port: listenAddr.Port(), Run: wg.Exec{}}
+		if err := lock.Apply(); err != nil {
+			return fmt.Errorf("closing the bridge's own port: %w", err)
+		}
+		defer lock.Remove()
+	}
 	exits := 0
 	refreshExits := func() {
 		if role != guard.Entry {

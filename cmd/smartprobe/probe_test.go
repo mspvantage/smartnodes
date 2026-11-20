@@ -38,6 +38,7 @@ func TestPickPartner(t *testing.T) {
 		{ID: 2, Tier: chain.TierExit, Status: 2, Endpoint: "10.0.0.3:1", Operator: "c"}, // leaving
 		{ID: 3, Tier: chain.TierExit, Status: 1, Endpoint: "10.0.0.1:2", Operator: "d"}, // same machine as 0
 		{ID: 4, Tier: chain.TierExit, Status: 1, Endpoint: "10.0.0.4:1", Operator: "a"}, // same operator as 0
+		{ID: 5, Tier: chain.TierEntry, Status: 1, Operator: "e", Commitment: "ab"},      // a bridge
 	}
 	for i := 0; i < 50; i++ {
 		p, ok := pickPartner(nodes[0], nodes)
@@ -45,9 +46,11 @@ func TestPickPartner(t *testing.T) {
 			t.Fatalf("partner %+v %v", p, ok)
 		}
 	}
-	p, ok := pickPartner(nodes[1], nodes)
-	if !ok || p.ID != 0 {
-		t.Fatalf("partner for an exit %+v %v", p, ok)
+	for i := 0; i < 50; i++ {
+		p, ok := pickPartner(nodes[1], nodes)
+		if !ok || p.ID != 0 {
+			t.Fatalf("partner for an exit %+v %v", p, ok)
+		}
 	}
 	if _, ok := pickPartner(nodes[0], nodes[:1]); ok {
 		t.Fatal("found a partner where there is none")

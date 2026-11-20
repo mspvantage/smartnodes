@@ -28,6 +28,12 @@ message Node {
   // reality, if set, is the node's disguised way in for devices in countries
   // that block VPNs. Only entry nodes offer it. Nothing in it is secret.
   Reality reality = 11;
+  // commitment, if set, makes the node a bridge: an unlisted entry node.
+  // Its address, keys and disguise are never on the chain; the operator
+  // hands them out as a bridge line, and this is that line's SHA-256, in
+  // lowercase hex, so a line can be checked against a bonded node. A
+  // bridge has no endpoint, pubkey or reality here, and is not probed.
+  string commitment = 12;
 }
 
 // Reality describes an entry node's Xray REALITY disguise.

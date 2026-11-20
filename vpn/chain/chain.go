@@ -125,11 +125,14 @@ type NodeInfo struct {
 	// ServiceKey is the account allowed to redeem for the operator, if any.
 	ServiceKey string
 	// Reality is the entry node's disguised way in, if it offers one.
-	Reality  *disguise.Reality
-	Endpoint string
-	Pubkey   string
-	Tier     uint64
-	Status   uint64
+	Reality *disguise.Reality
+	// Commitment is set for a bridge: its bridge line's fingerprint. A
+	// bridge has no endpoint or pubkey on the chain.
+	Commitment string
+	Endpoint   string
+	Pubkey     string
+	Tier       uint64
+	Status     uint64
 }
 
 // Registry tiers and statuses, as the registry module numbers them.
@@ -150,6 +153,7 @@ type nodeJSON struct {
 	// The chain's JSON may also spell it in camel case.
 	ServiceCamel string       `json:"serviceKey"`
 	Reality      *realityJSON `json:"reality"`
+	Commitment   string       `json:"commitment"`
 }
 
 type realityJSON struct {
@@ -189,7 +193,7 @@ func (n nodeJSON) info() NodeInfo {
 	if service == "" {
 		service = n.ServiceCamel
 	}
-	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, ServiceKey: service, Reality: n.Reality.reality(), Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
+	return NodeInfo{ID: uint64(n.ID), Operator: n.Operator, ServiceKey: service, Reality: n.Reality.reality(), Commitment: n.Commitment, Endpoint: n.Endpoint, Pubkey: n.Pubkey, Tier: uint64(n.Tier), Status: uint64(n.Status)}
 }
 
 // SignerAddress returns the address of the key that signs redemptions.

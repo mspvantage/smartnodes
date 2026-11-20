@@ -48,6 +48,14 @@ service Msg {
   // SetReality publishes or, with port 0, withdraws an entry node's
   // disguised way in. Only the operator may send it.
   rpc SetReality(MsgSetReality) returns (MsgSetRealityResponse);
+
+  // RegisterBridge registers an unlisted entry node, a bridge, by the
+  // fingerprint of its bridge line alone.
+  rpc RegisterBridge(MsgRegisterBridge) returns (MsgRegisterBridgeResponse);
+
+  // UpdateBridge replaces a bridge's fingerprint, as when it moves to a new
+  // address after being blocked.
+  rpc UpdateBridge(MsgUpdateBridge) returns (MsgUpdateBridgeResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -182,3 +190,29 @@ message MsgSetReality {
 
 // MsgSetRealityResponse defines the MsgSetRealityResponse message.
 message MsgSetRealityResponse {}
+
+// MsgRegisterBridge registers a bridge with the minimum entry bond or more.
+message MsgRegisterBridge {
+  option (cosmos.msg.v1.signer) = "operator";
+  option (amino.name) = "smartnodes/x/registry/MsgRegisterBridge";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string commitment = 2;
+  cosmos.base.v1beta1.Coin bond = 3 [(gogoproto.nullable) = false];
+}
+
+// MsgRegisterBridgeResponse defines the MsgRegisterBridgeResponse message.
+message MsgRegisterBridgeResponse {
+  uint64 id = 1;
+}
+
+// MsgUpdateBridge replaces a bridge's fingerprint.
+message MsgUpdateBridge {
+  option (cosmos.msg.v1.signer) = "operator";
+  option (amino.name) = "smartnodes/x/registry/MsgUpdateBridge";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  string commitment = 3;
+}
+
+// MsgUpdateBridgeResponse defines the MsgUpdateBridgeResponse message.
+message MsgUpdateBridgeResponse {}

@@ -1,6 +1,7 @@
 package keeper_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -61,4 +62,27 @@ func TestMinSpeedParams(t *testing.T) {
 	require.ErrorIs(t, p.Validate(), types.ErrInvalidParams)
 	p.MinExitMbps = 0
 	require.NoError(t, p.Validate(), "zero means no minimum")
+}
+
+// Bridges are never assigned to probers, by either query.
+func TestBridgesAreNeverProbed(t *testing.T) {
+	f := initFixture(t)
+	p := f.newProber(t, 1)
+	f.newProber(t, 2)
+	f.newProber(t, 3)
+	f.setParams(t, func(p *types.Params) { p.SampleBps = 10000 })
+	f.addNode(1, registrytypes.StatusActive)
+	f.addNode(2, registrytypes.StatusActive)
+	bridge := f.registry.nodes[2]
+	bridge.Commitment = strings.Repeat("ab", 32)
+	f.registry.nodes[2] = bridge
+	f.begin(t)
+	f.nextRound(t)
+
+	a, err := f.qs.Assignment(f.ctx, &types.QueryAssignmentRequest{NodeId: 2})
+	require.NoError(t, err)
+	require.False(t, a.Selected)
+	res, err := f.qs.ProberAssignments(f.ctx, &types.QueryProberAssignmentsRequest{ProberId: p.id})
+	require.NoError(t, err)
+	require.Equal(t, []uint64{1}, res.NodeIds)
 }

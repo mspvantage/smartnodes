@@ -33,6 +33,8 @@ const (
 
 	EventTypeSetServiceKey   = "registry_set_service_key"
 	EventTypeSetReality      = "registry_set_reality"
+	EventTypeRegisterBridge  = "registry_register_bridge"
+	EventTypeUpdateBridge    = "registry_update_bridge"
 	AttributeKeyRealityPort  = "reality_port"
 	AttributeKeyServiceKey   = "service_key"
 	EventTypeSponsorNode     = "registry_sponsor_node"

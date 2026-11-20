@@ -33,3 +33,13 @@ func ValidateReality(r Reality) error {
 	}
 	return nil
 }
+
+var commitmentRe = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// ValidateCommitment checks a bridge fingerprint: a SHA-256 in lowercase hex.
+func ValidateCommitment(c string) error {
+	if !commitmentRe.MatchString(c) {
+		return errorsmod.Wrap(ErrInvalidCommitment, "want 64 lowercase hex characters")
+	}
+	return nil
+}

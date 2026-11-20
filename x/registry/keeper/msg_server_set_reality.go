@@ -25,6 +25,9 @@ func (k msgServer) SetReality(ctx context.Context, msg *types.MsgSetReality) (*t
 	if node.Status != types.StatusActive {
 		return nil, errorsmod.Wrapf(types.ErrNodeNotActive, "node %d", msg.Id)
 	}
+	if node.Commitment != "" {
+		return nil, errorsmod.Wrap(types.ErrIsBridge, "a bridge's disguise goes in its bridge line, never on the chain")
+	}
 	if node.Tier != types.TierEntry {
 		return nil, errorsmod.Wrap(types.ErrInvalidReality, "only entry nodes offer a disguise")
 	}

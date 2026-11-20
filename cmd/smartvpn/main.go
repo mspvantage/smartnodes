@@ -46,6 +46,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mspvantage/smartnodes/vpn/bridge"
 	"github.com/mspvantage/smartnodes/vpn/control"
 	"github.com/mspvantage/smartnodes/vpn/disguise"
 	"github.com/mspvantage/smartnodes/vpn/guard"
@@ -229,6 +230,10 @@ type transportOpts struct {
 	transport string
 	reality   string // compact form, from the registry
 	xray      string
+	bridge    string // a bridge line, in place of the entry's details
+	// memory is a file remembering that WireGuard was blocked on this
+	// network; empty means do not remember.
+	memory string
 }
 
 func addTransportFlags(fs *flag.FlagSet, def string) *transportOpts {
@@ -236,11 +241,27 @@ func addTransportFlags(fs *flag.FlagSet, def string) *transportOpts {
 	fs.StringVar(&o.transport, "transport", def, "how to reach the entry node: wireguard, reality (disguised), or auto (WireGuard, then the disguise if it is blocked)")
 	fs.StringVar(&o.reality, "entry-reality", "", "the entry node's disguise from the registry, as PORT/PUBLICKEY/SHORTID/SERVERNAME/UUID")
 	fs.StringVar(&o.xray, "xray", "xray", "path to the Xray program, for the disguise")
+	fs.StringVar(&o.bridge, "bridge", "", "a bridge line from a bridge's operator, used as the entry in place of the -entry flags")
 	return o
 }
 
 func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint string, exitID uint64, exitKey, exitEndpoint string,
 	pay func(uint64) (string, error), creditPath string, wait time.Duration, t *transportOpts) (*client, error) {
+	var line *bridge.Line
+	if t.bridge != "" {
+		l, err := bridge.Parse(t.bridge)
+		if err != nil {
+			return nil, err
+		}
+		if l.ChainID != chainID {
+			return nil, fmt.Errorf("the bridge line is for chain %s", l.ChainID)
+		}
+		line = &l
+		entryID, entryKey = l.NodeID, l.WGKey
+		entryEndpoint = netip.AddrPortFrom(l.Address, l.Port).String()
+		t.transport = "reality"
+		t.reality = l.Reality.Compact()
+	}
 	if entryKey == "" || entryEndpoint == "" || exitKey == "" || exitEndpoint == "" {
 		return nil, errors.New("the entry's and exit's keys and endpoints are required")
 	}
@@ -258,7 +279,14 @@ func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint st
 	c := &client{
 		chainID: chainID, keyID: keyID, entry: entry, direct: entry, exit: exit, pay: pay, creditPath: creditPath, wait: wait,
 		say:       func(format string, a ...any) { fmt.Printf(time.Now().Format("15:04:05 ")+format+"\n", a...) },
-		transport: t.transport, xray: t.xray,
+		transport: t.transport, xray: t.xray, memory: t.memory,
+	}
+	c.target = entry.endpoint
+	if line != nil {
+		// A bridge's own port is reached on its loopback address, through
+		// its disguise.
+		c.target = line.Inner()
+		c.say("entry is bridge %d, reached only through its disguise", line.NodeID)
 	}
 	switch t.transport {
 	case "wireguard", "reality", "auto":
@@ -309,6 +337,7 @@ func runCmd(args []string) error {
 		return err
 	}
 	creditPath := filepath.Join(*creditDir, fmt.Sprintf("credit-%d.json", *exitID))
+	tr.memory = filepath.Join(*creditDir, "transport.json")
 	c, err := newClient(w.ChainID(), w.KeyID(), *entryID, *entryKey, *entryEndpoint, *exitID, *exitKey, *exitEndpoint, w.Spend, creditPath, *wait, tr)
 	if err != nil {
 		return err

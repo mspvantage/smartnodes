@@ -35,8 +35,10 @@ func (k msgServer) WithdrawBond(ctx context.Context, msg *types.MsgWithdrawBond)
 	if err := k.Node.Remove(ctx, node.Id); err != nil {
 		return nil, err
 	}
-	if err := k.NodeByPubkey.Remove(ctx, node.Pubkey); err != nil {
-		return nil, err
+	if node.Pubkey != "" { // a bridge has none
+		if err := k.NodeByPubkey.Remove(ctx, node.Pubkey); err != nil {
+			return nil, err
+		}
 	}
 
 	// What is left of the sponsored part goes back to the sponsor pool. The

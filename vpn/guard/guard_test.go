@@ -144,3 +144,20 @@ func TestExitRulesWithDNS(t *testing.T) {
 		t.Fatalf("entry rules:\n%s", rules)
 	}
 }
+
+func TestBridgeLock(t *testing.T) {
+	r := &fakeRunner{}
+	if err := (BridgeLock{Iface: "sb0", Port: 51830, Run: r}).Apply(); err != nil {
+		t.Fatal(err)
+	}
+	want := "*filter\n:SNB-sb0 - [0:0]\n-A SNB-sb0 -i lo -j RETURN\n-A SNB-sb0 -p udp --dport 51830 -j DROP\n-A SNB-sb0 -p tcp --dport 51830 -j DROP\nCOMMIT\n"
+	if r.stdin[0] != want {
+		t.Fatalf("rules:\n%s", r.stdin[0])
+	}
+	if got := strings.Join(r.calls, "\n"); !strings.Contains(got, "iptables -I INPUT 1 -j SNB-sb0") {
+		t.Fatalf("calls:\n%s", got)
+	}
+	if err := (BridgeLock{Iface: "sb0", Run: r}).Apply(); err == nil {
+		t.Fatal("no port accepted")
+	}
+}

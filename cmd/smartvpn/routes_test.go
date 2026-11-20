@@ -165,3 +165,26 @@ func TestBlockedEntryDetection(t *testing.T) {
 		t.Fatal("handshake missed")
 	}
 }
+
+func TestBlockedMemory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "transport.json")
+	now := time.Unix(1_800_000_000, 0)
+	if blockedHere(path, now) || blockedHere("", now) {
+		t.Fatal("blocked with no memory")
+	}
+	rememberBlocked(path, now)
+	if !blockedHere(path, now.Add(time.Hour)) {
+		t.Fatal("forgot within the day")
+	}
+	if blockedHere(path, now.Add(25*time.Hour)) {
+		t.Fatal("remembered for too long")
+	}
+	raw, _ := os.ReadFile(path)
+	if strings.Contains(string(raw), "node") || strings.Contains(string(raw), ".") {
+		t.Fatalf("the memory holds more than a time: %s", raw)
+	}
+	forgetBlocked(path)
+	if blockedHere(path, now) {
+		t.Fatal("not forgotten")
+	}
+}

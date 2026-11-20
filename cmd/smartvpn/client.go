@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -46,6 +47,11 @@ type client struct {
 	// direct is the entry as published; entry may instead point at the
 	// local end of the disguise.
 	direct peer
+	// target is where the disguise delivers on the entry: its WireGuard and
+	// payment port.
+	target netip.AddrPort
+	// memory remembers that WireGuard was blocked here; see blockedHere.
+	memory string
 }
 
 // errEntryBlocked means WireGuard to the entry node seems to be blocked on
@@ -64,10 +70,26 @@ func (c *client) open() error {
 		}
 		return c.openWith(true)
 	case "auto":
+		if c.reality != nil && blockedHere(c.memory, time.Now()) {
+			// WireGuard was blocked here lately: go straight to the
+			// disguise, and spend no ticket finding out again.
+			c.say("WireGuard was blocked on this network lately; using the disguise")
+			err := c.openWith(true)
+			if err == nil || !unreachable(err, c.entry.id) {
+				return err
+			}
+			c.say("the disguise did not get through (%v); trying WireGuard", err)
+		}
 		err := c.openWith(false)
 		if errors.Is(err, errEntryBlocked) && c.reality != nil {
 			c.say("%v; trying the disguise instead", err)
-			return c.openWith(true)
+			if err = c.openWith(true); err == nil {
+				rememberBlocked(c.memory, time.Now())
+			}
+			return err
+		}
+		if err == nil {
+			forgetBlocked(c.memory)
 		}
 		return err
 	default:
@@ -109,7 +131,7 @@ func (c *client) startXray() error {
 	if err != nil {
 		return err
 	}
-	cfg, err := disguise.ClientConfig(*c.reality, c.direct.endpoint.Addr(), local, c.direct.endpoint)
+	cfg, err := disguise.ClientConfig(*c.reality, c.direct.endpoint.Addr(), local, c.target)
 	if err != nil {
 		return err
 	}
@@ -441,3 +463,41 @@ func renewAt(now, end time.Time) time.Time {
 }
 
 func clock(t time.Time) string { return t.Format("15:04:05") }
+
+// blockedFor is how long the device remembers that WireGuard was blocked.
+const blockedFor = 24 * time.Hour
+
+// The memory file holds only a time: not which node, nor which network.
+type transportMemory struct {
+	WireGuardBlockedUntil int64 `json:"wireguard_blocked_until"`
+}
+
+// blockedHere reports whether WireGuard was found blocked lately.
+func blockedHere(path string, now time.Time) bool {
+	if path == "" {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var m transportMemory
+	if json.Unmarshal(raw, &m) != nil {
+		return false
+	}
+	return now.Unix() < m.WireGuardBlockedUntil
+}
+
+func rememberBlocked(path string, now time.Time) {
+	if path == "" {
+		return
+	}
+	raw, _ := json.Marshal(transportMemory{WireGuardBlockedUntil: now.Add(blockedFor).Unix()})
+	_ = os.WriteFile(path, raw, 0o600)
+}
+
+func forgetBlocked(path string) {
+	if path != "" {
+		_ = os.Remove(path)
+	}
+}

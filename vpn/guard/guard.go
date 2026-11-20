@@ -135,3 +135,40 @@ func (g Guard) Remove() error {
 	}
 	return nil
 }
+
+// BridgeLock closes a bridge's WireGuard and payment port to everything but
+// its own disguise, which reaches it over the loopback interface. A censor
+// that guesses a bridge's address finds nothing there but an ordinary
+// website.
+type BridgeLock struct {
+	Iface string
+	Port  uint16
+	Run   wg.Runner
+}
+
+func (b BridgeLock) chain() string { return "SNB-" + b.Iface }
+
+// Apply installs the lock.
+func (b BridgeLock) Apply() error {
+	if err := (Guard{Iface: b.Iface, Run: b.Run}).check(); err != nil || b.Port == 0 {
+		return fmt.Errorf("guard: bad bridge lock %q:%d", b.Iface, b.Port)
+	}
+	c := b.chain()
+	rules := fmt.Sprintf("*filter\n:%s - [0:0]\n-A %s -i lo -j RETURN\n-A %s -p udp --dport %d -j DROP\n-A %s -p tcp --dport %d -j DROP\nCOMMIT\n",
+		c, c, c, b.Port, c, b.Port)
+	if err := b.Run.Run([]byte(rules), "iptables-restore", "--noflush"); err != nil {
+		return err
+	}
+	if err := b.Run.Run(nil, "iptables", "-C", "INPUT", "-j", c); err != nil {
+		return b.Run.Run(nil, "iptables", "-I", "INPUT", "1", "-j", c)
+	}
+	return nil
+}
+
+// Remove takes the lock away.
+func (b BridgeLock) Remove() {
+	c := b.chain()
+	_ = b.Run.Run(nil, "iptables", "-D", "INPUT", "-j", c)
+	_ = b.Run.Run(nil, "iptables", "-F", c)
+	_ = b.Run.Run(nil, "iptables", "-X", c)
+}

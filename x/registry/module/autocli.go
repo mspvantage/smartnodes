@@ -88,6 +88,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "port"}, {ProtoField: "public_key"}, {ProtoField: "short_id"}, {ProtoField: "server_name"}, {ProtoField: "uuid"}},
 				},
 				{
+					RpcMethod:      "RegisterBridge",
+					Use:            "register-bridge [commitment] [bond]",
+					Short:          "Register an unlisted entry node, a bridge, by its bridge line's fingerprint ('smartnode bridge-line' prints it)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "commitment"}, {ProtoField: "bond"}},
+				},
+				{
+					RpcMethod:      "UpdateBridge",
+					Use:            "update-bridge [id] [commitment]",
+					Short:          "Replace a bridge's fingerprint, as after moving it to a new address",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "commitment"}},
+				},
+				{
 					RpcMethod:      "WithdrawBond",
 					Use:            "withdraw-bond [id]",
 					Short:          "Send a withdraw-bond tx",

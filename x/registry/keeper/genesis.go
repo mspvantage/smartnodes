@@ -24,6 +24,9 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 		if err := k.Node.Set(ctx, elem.Id, elem); err != nil {
 			return err
 		}
+		if elem.Pubkey == "" {
+			continue // a bridge
+		}
 		if err := k.NodeByPubkey.Set(ctx, elem.Pubkey, elem.Id); err != nil {
 			return err
 		}

@@ -96,6 +96,10 @@ func (k msgServer) CommitReports(ctx context.Context, msg *types.MsgCommitReport
 		if node.Status != registrytypes.StatusActive {
 			return nil, errorsmod.Wrapf(types.ErrNodeNotActive, "node %d", nodeID)
 		}
+		if node.Commitment != "" {
+			// Bridges are never assigned, so no report on one is accepted.
+			return nil, errorsmod.Wrapf(types.ErrNodeNotSelected, "node %d is a bridge", nodeID)
+		}
 		jailed, err := k.isJailed(ctx, nodeID)
 		if err != nil {
 			return nil, err

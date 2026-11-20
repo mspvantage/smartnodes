@@ -31,7 +31,9 @@ func pickPartner(target chain.NodeInfo, nodes []chain.NodeInfo) (chain.NodeInfo,
 	}
 	var options []chain.NodeInfo
 	for _, n := range nodes {
-		if n.Tier == want && n.Status == chain.StatusActive && host(n.Endpoint) != host(target.Endpoint) && n.Operator != target.Operator {
+		// Bridges are never used: their addresses are not on the chain.
+		if n.Tier == want && n.Status == chain.StatusActive && n.Commitment == "" && n.Endpoint != "" &&
+			host(n.Endpoint) != host(target.Endpoint) && n.Operator != target.Operator {
 			options = append(options, n)
 		}
 	}

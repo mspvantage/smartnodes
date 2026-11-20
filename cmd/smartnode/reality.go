@@ -24,6 +24,28 @@ type realityOpts struct {
 	serverName string
 	xray       string
 	dir        string
+	// bridge is the bridge's own address, for an unlisted entry node.
+	bridge string
+}
+
+// published works out the disguise devices use, making keys the first time.
+func (o *realityOpts) published() (disguise.ServerKeys, disguise.Reality, error) {
+	if o.port == 0 || o.port > 65535 {
+		return disguise.ServerKeys{}, disguise.Reality{}, fmt.Errorf("-reality-port %d", o.port)
+	}
+	host, _, err := net.SplitHostPort(o.cover)
+	if err != nil {
+		return disguise.ServerKeys{}, disguise.Reality{}, fmt.Errorf("-reality-cover must be host:port: %w", err)
+	}
+	if o.serverName == "" {
+		o.serverName = host
+	}
+	keys, err := loadKeys(filepath.Join(o.dir, "reality-keys.json"))
+	if err != nil {
+		return keys, disguise.Reality{}, err
+	}
+	pub := keys.Published(uint16(o.port), o.serverName)
+	return keys, pub, pub.Validate()
 }
 
 // loadKeys reads the disguise keys, making them the first time. Keeping
@@ -54,26 +76,12 @@ func loadKeys(path string) (disguise.ServerKeys, error) {
 // startReality runs Xray for as long as ctx lasts, restarting it if it
 // stops, and says whether the chain shows the same disguise.
 func startReality(ctx context.Context, o realityOpts, listen netip.AddrPort, info chain.NodeInfo, nodeID uint64) error {
-	if o.port > 65535 {
-		return fmt.Errorf("port %d", o.port)
-	}
-	host, _, err := net.SplitHostPort(o.cover)
-	if err != nil {
-		return fmt.Errorf("-reality-cover must be host:port: %w", err)
-	}
-	if o.serverName == "" {
-		o.serverName = host
-	}
 	xray, err := exec.LookPath(o.xray)
 	if err != nil {
 		return fmt.Errorf("the Xray program was not found (%s); install it or give -xray", o.xray)
 	}
-	keys, err := loadKeys(filepath.Join(o.dir, "reality-keys.json"))
+	keys, pub, err := o.published()
 	if err != nil {
-		return err
-	}
-	pub := keys.Published(uint16(o.port), o.serverName)
-	if err := pub.Validate(); err != nil {
 		return err
 	}
 
@@ -94,7 +102,9 @@ func startReality(ctx context.Context, o realityOpts, listen netip.AddrPort, inf
 		return fmt.Errorf("Xray rejects its settings: %v: %s", err, lastLines(out))
 	}
 
-	if info.Reality == nil || *info.Reality != pub {
+	if o.bridge != "" {
+		// A bridge's disguise is in its bridge line, never on the chain.
+	} else if info.Reality == nil || *info.Reality != pub {
 		log.Printf("the chain does not show this disguise yet; the operator publishes it with:")
 		log.Printf("  smartnodesd tx registry set-reality %d %d %s %s %s %s --from <operator>",
 			nodeID, pub.Port, pub.PublicKey, pub.ShortID, pub.ServerName, pub.UUID)

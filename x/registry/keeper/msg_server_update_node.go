@@ -24,6 +24,9 @@ func (k msgServer) UpdateNode(ctx context.Context, msg *types.MsgUpdateNode) (*t
 	if node.Status != types.StatusActive {
 		return nil, errorsmod.Wrapf(types.ErrNodeNotActive, "node %d", msg.Id)
 	}
+	if node.Commitment != "" {
+		return nil, errorsmod.Wrap(types.ErrIsBridge, "a bridge has no public address; use update-bridge")
+	}
 
 	changed := false
 

@@ -97,11 +97,22 @@ func (n Node) ValidateBasic() error {
 	if err := ValidateTier(n.Tier); err != nil {
 		return err
 	}
-	if err := ValidateEndpoint(n.Endpoint); err != nil {
-		return err
-	}
-	if err := ValidatePubkey(n.Pubkey); err != nil {
-		return err
+	if n.Commitment != "" {
+		// A bridge publishes nothing that would let a censor find it or
+		// confirm a guess.
+		if err := ValidateCommitment(n.Commitment); err != nil {
+			return err
+		}
+		if n.Endpoint != "" || n.Pubkey != "" || n.Reality != nil || n.Tier != TierEntry {
+			return errorsmod.Wrap(ErrIsBridge, "a bridge is an entry node with no endpoint, pubkey or disguise on the chain")
+		}
+	} else {
+		if err := ValidateEndpoint(n.Endpoint); err != nil {
+			return err
+		}
+		if err := ValidatePubkey(n.Pubkey); err != nil {
+			return err
+		}
 	}
 	if err := n.Bond.Validate(); err != nil {
 		return errorsmod.Wrap(ErrInvalidBond, err.Error())
