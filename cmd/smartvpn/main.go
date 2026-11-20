@@ -74,6 +74,10 @@ func main() {
 		err = runCmd(os.Args[2:])
 	case "get-bridge":
 		err = getBridge(os.Args[2:])
+	case "report-bridge":
+		err = reportBridge(os.Args[2:])
+	case "flag":
+		err = flagNode(os.Args[2:])
 	case "prepay":
 		err = prepay(os.Args[2:])
 	case "up":
@@ -95,7 +99,10 @@ func usage() {
                    -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-credit-dir DIR] [-wait 10m]
   smartvpn connect -entry-id N -entry-key KEY -entry-endpoint HOST:PORT -entry-ticket T -key-id K
                    (-exit-id N -exit-key KEY -exit-endpoint HOST:PORT -exit-ticket T [-wait 10m] | -exit-credit FILE)
-  smartvpn get-bridge -wallet FILE -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-out FILE]
+  smartvpn get-bridge -wallet FILE -exit-id N -exit-key KEY -exit-endpoint HOST:PORT
+                   [-check-id N -check-key KEY -check-endpoint HOST:PORT] [-out FILE]
+  smartvpn report-bridge -bridge N -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-bridges FILE]
+  smartvpn flag    -wallet FILE -node N -exit-id N -exit-key KEY -exit-endpoint HOST:PORT
   smartvpn prepay  -exit-id N -exit-key KEY -exit-endpoint HOST:PORT -key-id K -ticket T -out FILE
   smartvpn up      -node-id N -node-key KEY -endpoint HOST:PORT -key-id K -ticket T
   smartvpn down

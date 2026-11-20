@@ -44,4 +44,18 @@ message Params {
   // Every prober judges by these, so all judge alike. Zero means no minimum.
   uint64 min_entry_mbps = 16;
   uint64 min_exit_mbps = 17;
+  // Aimed probing. A node's chance of being probed in a round is
+  // sample_bps times a factor fixed when the round starts:
+  //   aim_boost_factor while it is new (fewer than aim_new_passes passes),
+  //     has failed since its last pass, or was unjailed within
+  //     aim_window_rounds;
+  //   aim_flag_factor while customers' flags are in force;
+  //   aim_steady_pct percent once it has aim_steady_passes passes and no
+  //     recent trouble: least often, but never zero and always at random.
+  uint64 aim_boost_factor = 18;
+  uint64 aim_flag_factor = 19;
+  uint64 aim_window_rounds = 20;
+  uint64 aim_new_passes = 21;
+  uint64 aim_steady_passes = 22;
+  uint64 aim_steady_pct = 23;
 }

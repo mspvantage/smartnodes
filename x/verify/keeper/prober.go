@@ -29,6 +29,7 @@ const (
 	EventTypeTallyFailed      = "verify_tally_failed"
 	EventTypeJail             = "verify_jail"
 	EventTypeUnjail           = "verify_unjail"
+	EventTypeFlag             = "verify_flag"
 	EventTypeSlash            = "verify_slash"
 	EventTypeWouldSlash       = "verify_would_slash"
 	EventTypeReward           = "verify_reward"

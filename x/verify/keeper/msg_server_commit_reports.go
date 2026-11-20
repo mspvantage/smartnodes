@@ -107,7 +107,11 @@ func (k msgServer) CommitReports(ctx context.Context, msg *types.MsgCommitReport
 		if jailed {
 			return nil, errorsmod.Wrapf(types.ErrNodeJailed, "node %d", nodeID)
 		}
-		if !types.Selected(seed, nodeID, params.SampleBps) {
+		bps, err := k.aimedBps(ctx, params, round, nodeID)
+		if err != nil {
+			return nil, err
+		}
+		if !types.Selected(seed, nodeID, bps) {
 			return nil, errorsmod.Wrapf(types.ErrNodeNotSelected, "node %d, round %d", nodeID, round)
 		}
 		if !types.IsAssigned(seed, nodeID, active, params.ProbersPerNode, idx) {

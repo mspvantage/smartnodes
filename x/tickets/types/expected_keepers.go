@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"cosmossdk.io/core/address"
+	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -16,6 +17,9 @@ type RegistryKeeper interface {
 	GetNode(ctx context.Context, id uint64) (registrytypes.Node, error)
 	// WalkNodes calls fn for every node, in id order, until fn returns true.
 	WalkNodes(ctx context.Context, fn func(registrytypes.Node) (stop bool, err error)) error
+	// SlashNode burns up to amount from a node's bond and returns what was
+	// burned.
+	SlashNode(ctx context.Context, id uint64, amount math.Int) (math.Int, error)
 }
 
 // AuthKeeper defines the expected interface for the Auth module.

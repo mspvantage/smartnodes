@@ -125,7 +125,7 @@ func NewParams(
 
 // DefaultParams returns a default set of parameters.
 func DefaultParams() Params {
-	return NewParams(
+	p := NewParams(
 		DefaultRoundBlocks,
 		DefaultProbersPerNode,
 		DefaultSampleBps,
@@ -144,6 +144,58 @@ func DefaultParams() Params {
 		DefaultMinEntryMbps,
 		DefaultMinExitMbps,
 	)
+	p.AimBoostFactor = DefaultAimBoostFactor
+	p.AimFlagFactor = DefaultAimFlagFactor
+	p.AimWindowRounds = DefaultAimWindowRounds
+	p.AimNewPasses = DefaultAimNewPasses
+	p.AimSteadyPasses = DefaultAimSteadyPasses
+	p.AimSteadyPct = DefaultAimSteadyPct
+	return p
+}
+
+// Draft aimed-probing values: new, failing and returning nodes four times
+// as often, flagged ones three times for a day of hourly rounds, steady ones
+// at half the base rate.
+const (
+	DefaultAimBoostFactor  uint64 = 4
+	DefaultAimFlagFactor   uint64 = 3
+	DefaultAimWindowRounds uint64 = 24
+	DefaultAimNewPasses    uint64 = 3
+	DefaultAimSteadyPasses uint64 = 20
+	DefaultAimSteadyPct    uint64 = 50
+	// MaxAimFactor bounds the boost factors.
+	MaxAimFactor uint64 = 20
+)
+
+// AimedBps is a node's chance of being probed in a round, in basis points,
+// from what verification knew of it when the round started. rec is nil for
+// a node never tallied or flagged, which counts as new.
+func AimedBps(p Params, rec *NodeRecord, round uint64) uint64 {
+	base := p.SampleBps
+	factor := func(f uint64) uint64 {
+		if f == 0 {
+			f = 1
+		}
+		if v := base * f; v < BpsDenominator {
+			return v
+		}
+		return BpsDenominator
+	}
+	switch {
+	case rec == nil || rec.Passes < p.AimNewPasses:
+		return factor(p.AimBoostFactor)
+	case rec.ConsecutiveFails > 0,
+		rec.UnjailedRound > 0 && round <= rec.UnjailedRound+p.AimWindowRounds:
+		return factor(p.AimBoostFactor)
+	case rec.FlaggedFrom > 0 && round >= rec.FlaggedFrom && round <= rec.FlaggedUntil:
+		return factor(p.AimFlagFactor)
+	case rec.Passes >= p.AimSteadyPasses && p.AimSteadyPct > 0 && p.AimSteadyPct < 100:
+		if v := base * p.AimSteadyPct / 100; v > 0 {
+			return v
+		}
+		return 1
+	}
+	return base
 }
 
 // Validate validates the set of params.
@@ -184,6 +236,12 @@ func (p Params) Validate() error {
 	}
 	if p.NodeShareBps > BpsDenominator {
 		return errorsmod.Wrapf(ErrInvalidParams, "node_share_bps %d, want at most %d", p.NodeShareBps, BpsDenominator)
+	}
+	if p.AimBoostFactor == 0 || p.AimBoostFactor > MaxAimFactor || p.AimFlagFactor == 0 || p.AimFlagFactor > MaxAimFactor {
+		return errorsmod.Wrapf(ErrInvalidParams, "aim factors must be 1-%d", MaxAimFactor)
+	}
+	if p.AimWindowRounds == 0 || p.AimWindowRounds > 100_000 || p.AimSteadyPct == 0 || p.AimSteadyPct > 100 {
+		return errorsmod.Wrap(ErrInvalidParams, "aim_window_rounds must be 1-100000 and aim_steady_pct 1-100")
 	}
 	if p.MinEntryMbps > MaxMinMbps || p.MinExitMbps > MaxMinMbps {
 		return errorsmod.Wrapf(ErrInvalidParams, "minimum speeds %d and %d Mbit/s, want at most %d", p.MinEntryMbps, p.MinExitMbps, MaxMinMbps)

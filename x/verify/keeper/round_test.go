@@ -244,7 +244,8 @@ func TestOnlyAssignedProbersMayCommit(t *testing.T) {
 func TestOnlySelectedNodesAreProbed(t *testing.T) {
 	f := initFixture(t)
 	p := f.newProber(t, 1)
-	f.setParams(t, func(p *types.Params) { p.SampleBps = 5000 })
+	// Base sampling only: no extra probing of new nodes.
+	f.setParams(t, func(p *types.Params) { p.SampleBps = 5000; p.AimBoostFactor = 1 })
 	for id := uint64(1); id <= 40; id++ {
 		f.addNode(id, registrytypes.StatusActive)
 	}

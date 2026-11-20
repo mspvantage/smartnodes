@@ -40,6 +40,8 @@ type TicketsKeeper interface {
 	PayFromProberFund(ctx context.Context, recipient sdk.AccAddress, want sdk.Coin) (sdk.Coin, error)
 	// FundProberFund moves coins from a module account into the prober fund.
 	FundProberFund(ctx context.Context, fromModule string, amount sdk.Coin) error
+	// RedeemForFlag spends one ticket made out to a node and pays the node.
+	RedeemForFlag(ctx context.Context, nodeID, keyID uint64, ticket string) error
 }
 
 // AuthKeeper defines the expected interface for the Auth module.

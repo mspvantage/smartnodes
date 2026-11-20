@@ -46,21 +46,30 @@ const (
 	maxSealed = 1024
 )
 
-// handedOut says how often a bridge's current line has been given out.
-func (k Keeper) handedOut(ctx context.Context, n registrytypes.Node) (uint64, error) {
+// handouts is the record of a bridge's current line.
+func (k Keeper) handouts(ctx context.Context, n registrytypes.Node) types.BridgeHandouts {
 	h, err := k.BridgeHandouts.Get(ctx, n.Id)
-	if err != nil {
-		return 0, nil
+	if err != nil || h.Commitment != n.Commitment {
+		// It moved, or was never handed out: a new line, given to nobody yet.
+		return types.BridgeHandouts{BridgeId: n.Id, Commitment: n.Commitment}
 	}
-	if h.Commitment != n.Commitment {
-		return 0, nil // it moved: a new line, given to nobody yet
+	return h
+}
+
+// deadLine says whether enough of the people given a line have reported it
+// dead for it to stop being handed out. A censor that bought the line can
+// report it too, so it takes several reports and a share of those given it;
+// and stopping hand-out never cuts off anyone already using the line.
+func deadLine(h types.BridgeHandouts, params types.Params) bool {
+	if params.BridgeDeadReports == 0 || h.Dead < params.BridgeDeadReports {
+		return false
 	}
-	return h.Count, nil
+	return h.Dead*100 >= params.BridgeDeadPct*h.Count
 }
 
 // pickBridge chooses, from seed, an active bridge not in exclude whose
 // current line can still be handed out.
-func (k Keeper) pickBridge(ctx context.Context, limit uint64, seed []byte, exclude []uint64) (uint64, error) {
+func (k Keeper) pickBridge(ctx context.Context, params types.Params, seed []byte, exclude []uint64) (uint64, error) {
 	skip := make(map[uint64]bool, len(exclude))
 	for _, id := range exclude {
 		skip[id] = true
@@ -70,11 +79,8 @@ func (k Keeper) pickBridge(ctx context.Context, limit uint64, seed []byte, exclu
 		if n.Commitment == "" || n.Status != registrytypes.StatusActive || skip[n.Id] {
 			return false, nil
 		}
-		count, err := k.handedOut(ctx, n)
-		if err != nil {
-			return true, err
-		}
-		if count < limit {
+		h := k.handouts(ctx, n)
+		if h.Count < params.BridgeHandoutLimit && !deadLine(h, params) {
 			ids = append(ids, n.Id)
 		}
 		return false, nil
@@ -115,12 +121,17 @@ func (k msgServer) RequestBridge(ctx context.Context, msg *types.MsgRequestBridg
 	} else if used {
 		return nil, errorsmod.Wrap(types.ErrBridgeRequest, "request key already used; make a fresh one")
 	}
+	if msg.ReportHash != "" {
+		if h, err := base64.StdEncoding.DecodeString(msg.ReportHash); err != nil || len(h) != sha256.Size {
+			return nil, errorsmod.Wrap(types.ErrBridgeRequest, "report hash must be 32 bytes, base64")
+		}
+	}
 	params, err := k.Params.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	// Pick first: if no bridge can take it, nothing is spent.
-	bridgeID, err := k.pickBridge(ctx, params.BridgeHandoutLimit, bridgeSeed(ctx, msg.RequestKey, 0), nil)
+	bridgeID, err := k.pickBridge(ctx, params, bridgeSeed(ctx, msg.RequestKey, 0), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +183,7 @@ func (k msgServer) RequestBridge(ctx context.Context, msg *types.MsgRequestBridg
 	req := types.BridgeRequest{
 		Id: id, RequestKey: msg.RequestKey, Amount: key.Price, BridgeId: bridgeID,
 		Deadline: height + int64(params.BridgeAnswerBlocks), Tried: []uint64{bridgeID}, State: types.BridgeOpen,
+		ReportHash: msg.ReportHash,
 	}
 	if err := k.saveRequest(ctx, req); err != nil {
 		return nil, err
@@ -232,35 +244,23 @@ func (k msgServer) AnswerBridge(ctx context.Context, msg *types.MsgAnswerBridge)
 		return nil, err
 	}
 
-	// Answered: kept for the device to read, then deleted.
+	// Answered. The payment is held for bridge_report_blocks, so that a
+	// rubbish answer can be proven before the bridge is paid; then it is
+	// paid and the request kept for the device to read, then deleted.
 	_, height, _ := blockInfo(ctx)
 	if err := k.BridgeDue.Remove(ctx, collections.Join(req.Deadline, req.Id)); err != nil {
 		return nil, err
 	}
-	req.Sealed, req.State = msg.Sealed, types.BridgeAnswered
-	req.Deadline = height + int64(params.RetentionBlocks)
+	req.Sealed, req.State, req.Commitment = msg.Sealed, types.BridgeAnswered, node.Commitment
+	req.Deadline = height + int64(params.BridgeReportBlocks)
 	if err := k.saveRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
-	count, err := k.handedOut(ctx, node)
-	if err != nil {
+	h := k.handouts(ctx, node)
+	h.Count++
+	if err := k.BridgeHandouts.Set(ctx, node.Id, h); err != nil {
 		return nil, err
-	}
-	if err := k.BridgeHandouts.Set(ctx, node.Id, types.BridgeHandouts{BridgeId: node.Id, Commitment: node.Commitment, Count: count + 1}); err != nil {
-		return nil, err
-	}
-
-	// Paid like a redeemed ticket: the price less the protocol fee.
-	fee := req.Amount.Amount.Mul(sdkmath.NewIntFromUint64(params.FeeBps)).Quo(sdkmath.NewIntFromUint64(types.BasisPoints))
-	if err := k.distributeFee(ctx, sdk.NewCoin(req.Amount.Denom, fee)); err != nil {
-		return nil, err
-	}
-	payout := sdk.NewCoin(req.Amount.Denom, req.Amount.Amount.Sub(fee))
-	if payout.IsPositive() {
-		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, operator, sdk.NewCoins(payout)); err != nil {
-			return nil, err
-		}
 	}
 	emit(ctx, EventTypeBridgeAnswer, sdk.NewAttribute(AttributeKeyRequestID, u64(req.Id)), sdk.NewAttribute(AttributeKeyBridgeID, u64(node.Id)))
 	return &types.MsgAnswerBridgeResponse{}, nil
@@ -314,6 +314,16 @@ func (k Keeper) bridgeDue(ctx context.Context, params types.Params, key collecti
 		return nil // already gone
 	}
 	_, height, _ := blockInfo(ctx)
+	if req.State == types.BridgeAnswered && !req.Paid {
+		// No rubbish answer was proven in time: pay the bridge, then keep
+		// the request a while longer for the device to read.
+		if err := k.payBridge(ctx, params, req); err != nil {
+			return err
+		}
+		req.Paid = true
+		req.Deadline = height + int64(params.RetentionBlocks)
+		return k.saveRequest(ctx, req)
+	}
 	if req.State != types.BridgeOpen {
 		// Kept long enough to be read: delete.
 		if err := k.BridgeRequest.Remove(ctx, req.Id); err != nil {
@@ -323,7 +333,7 @@ func (k Keeper) bridgeDue(ctx context.Context, params types.Params, key collecti
 	}
 	// Unanswered in time: another bridge, if any is left to ask.
 	if uint64(len(req.Tried)) < params.BridgeTries {
-		next, err := k.pickBridge(ctx, params.BridgeHandoutLimit, bridgeSeed(ctx, req.RequestKey, len(req.Tried)), req.Tried)
+		next, err := k.pickBridge(ctx, params, bridgeSeed(ctx, req.RequestKey, len(req.Tried)), req.Tried)
 		if err == nil {
 			req.BridgeId = next
 			req.Tried = append(req.Tried, next)
@@ -375,4 +385,28 @@ func (q queryServer) BridgeRequestsFor(ctx context.Context, req *types.QueryBrid
 		return false, nil
 	})
 	return res, err
+}
+
+// payBridge pays the bridge that answered a request: the price less the
+// protocol fee, like a redeemed ticket. If the bridge has gone, its share
+// goes the way of the fee.
+func (k Keeper) payBridge(ctx context.Context, params types.Params, req types.BridgeRequest) error {
+	fee := req.Amount.Amount.Mul(sdkmath.NewIntFromUint64(params.FeeBps)).Quo(sdkmath.NewIntFromUint64(types.BasisPoints))
+	payout := sdk.NewCoin(req.Amount.Denom, req.Amount.Amount.Sub(fee))
+	var operator sdk.AccAddress
+	if node, err := k.registryKeeper.GetNode(ctx, req.BridgeId); err == nil {
+		if op, err := k.addressCodec.StringToBytes(node.Operator); err == nil {
+			operator = op
+		}
+	}
+	if operator == nil {
+		return k.distributeFee(ctx, req.Amount)
+	}
+	if err := k.distributeFee(ctx, sdk.NewCoin(req.Amount.Denom, fee)); err != nil {
+		return err
+	}
+	if payout.IsPositive() {
+		return k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, operator, sdk.NewCoins(payout))
+	}
+	return nil
 }

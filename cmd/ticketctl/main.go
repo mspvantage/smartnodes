@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mspvantage/smartnodes/vpn/wallet"
 	ticketcrypto "github.com/mspvantage/smartnodes/x/tickets/crypto"
 )
 
@@ -240,6 +241,12 @@ func walletUnblind(args []string) error {
 	if *path == "" || *pubkey == "" {
 		return errors.New("-wallet and -pubkey are required")
 	}
+	// smartvpn or smartprobe may be spending from this wallet right now.
+	unlock, err := wallet.Lock(*path, true)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	var w walletFile
 	if err := readJSON(*path, &w); err != nil {
 		return err

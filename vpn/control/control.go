@@ -91,8 +91,19 @@ type Hello struct {
 	Op string `json:"op,omitempty"`
 	// RequestKey is the device's one-time key for a bridge request, base64.
 	RequestKey string `json:"request_key,omitempty"`
-	// NodeID names the bridge whose fingerprint is asked for.
+	// NodeID names the bridge whose fingerprint is asked for, or the node
+	// a flag is on.
 	NodeID uint64 `json:"node_id,omitempty"`
+	// ReportHash goes with a bridge request: sha256 of a secret the device
+	// keeps, base64, so it can later report the line dead.
+	ReportHash string `json:"report_hash,omitempty"`
+	// Secret goes with a bridge report: the request's one-time private key
+	// to prove a rubbish answer, or, with Dead, the secret behind
+	// ReportHash. NewRequestKey is the fresh key for the next bridge after a
+	// proven rubbish answer.
+	Secret        string `json:"secret,omitempty"`
+	Dead          bool   `json:"dead,omitempty"`
+	NewRequestKey string `json:"new_request_key,omitempty"`
 }
 
 // Bridge-line services a node offers its clients, so that a device never
@@ -106,6 +117,12 @@ const (
 	OpBridgeAnswer = "bridge-answer"
 	// OpBridgeFingerprint reads bridge NodeID's fingerprint from the chain.
 	OpBridgeFingerprint = "bridge-fingerprint"
+	// OpBridgeReport reports the answer to the request for RequestKey:
+	// proven rubbish, or dead.
+	OpBridgeReport = "bridge-report"
+	// OpFlag is a customer's flag on node NodeID, backed by one ticket made
+	// out to that node.
+	OpFlag = "flag"
 )
 
 // Reply is what the node answers.
@@ -124,8 +141,13 @@ type Reply struct {
 	// the request's state (1 open, 2 answered, 3 lapsed).
 	Sealed string `json:"sealed,omitempty"`
 	State  uint32 `json:"state,omitempty"`
-	// Commitment answers OpBridgeFingerprint.
+	// Commitment answers OpBridgeFingerprint; with OpBridgeAnswer it is
+	// the fingerprint the answering bridge had committed to, and BridgeID
+	// that bridge.
 	Commitment string `json:"commitment,omitempty"`
+	BridgeID   uint64 `json:"bridge_id,omitempty"`
+	// Reassigned answers a proven rubbish report: the bridge asked next.
+	Reassigned uint64 `json:"reassigned,omitempty"`
 }
 
 // KeyFromPrivate builds a key pair from a raw Curve25519 private key, such
@@ -320,11 +342,18 @@ func parseHello(payload []byte) (Hello, error) {
 	if hello.Close && (hello.Prepay || len(hello.Tickets) > 0) {
 		return Hello{}, errors.New("control: a close carries no tickets")
 	}
+	is32 := func(s string) bool {
+		k, err := base64.StdEncoding.DecodeString(s)
+		return err == nil && len(k) == 32
+	}
 	switch hello.Op {
 	case "":
 	case OpBridgeRequest, OpBridgeAnswer:
-		if k, err := base64.StdEncoding.DecodeString(hello.RequestKey); err != nil || len(k) != 32 {
+		if !is32(hello.RequestKey) {
 			return Hello{}, errors.New("control: a bridge request needs a 32-byte request key")
+		}
+		if hello.ReportHash != "" && (hello.Op != OpBridgeRequest || !is32(hello.ReportHash)) {
+			return Hello{}, errors.New("control: a report hash is 32 bytes and goes with a request")
 		}
 		want := 0
 		if hello.Op == OpBridgeRequest {
@@ -337,6 +366,21 @@ func parseHello(payload []byte) (Hello, error) {
 	case OpBridgeFingerprint:
 		if len(hello.Tickets) != 0 || hello.Prepay || hello.Close {
 			return Hello{}, errors.New("control: a fingerprint question carries nothing else")
+		}
+		return hello, nil
+	case OpBridgeReport:
+		if !is32(hello.RequestKey) || !is32(hello.Secret) || len(hello.Tickets) != 0 || hello.Prepay || hello.Close {
+			return Hello{}, errors.New("control: a bridge report carries the request key and a 32-byte secret")
+		}
+		if !hello.Dead && !is32(hello.NewRequestKey) {
+			return Hello{}, errors.New("control: a rubbish report needs a fresh request key for the next bridge")
+		}
+		return hello, nil
+	case OpFlag:
+		// Node ids start at 0, so any NodeID is allowed; the ticket is made
+		// out to one node, and the chain refuses it for any other.
+		if len(hello.Tickets) != 1 || hello.Prepay || hello.Close {
+			return Hello{}, errors.New("control: a flag names a node and carries one ticket made out to it")
 		}
 		return hello, nil
 	default:

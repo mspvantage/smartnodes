@@ -40,8 +40,6 @@ service Query {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/purchase";
   }
 
-  // TicketSpent reports whether a ticket has been redeemed. Nodes ask before
-  // serving, so a ticket that was already used elsewhere is refused at once.
   // BridgeRequestByKey finds a bridge request by its one-time key.
   rpc BridgeRequestByKey(QueryBridgeRequestByKeyRequest) returns (QueryBridgeRequestByKeyResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/bridge_request_by_key/{request_key}";
@@ -50,6 +48,14 @@ service Query {
   rpc BridgeRequestsFor(QueryBridgeRequestsForRequest) returns (QueryBridgeRequestsForResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/bridge_requests_for/{bridge_id}";
   }
+  // BridgeLine says how a bridge's current line stands: how many it was
+  // given to, how many reported it dead, and whether it is still handed
+  // out. The bridge program asks, to tell its operator when to move.
+  rpc BridgeLine(QueryBridgeLineRequest) returns (QueryBridgeLineResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/bridge_line/{bridge_id}";
+  }
+  // TicketSpent reports whether a ticket has been redeemed. Nodes ask before
+  // serving, so a ticket that was already used elsewhere is refused at once.
   rpc TicketSpent(QueryTicketSpentRequest) returns (QueryTicketSpentResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/ticket_spent/{key_id}/{ticket_key}";
   }
@@ -139,4 +145,19 @@ message QueryBridgeRequestsForRequest {
 // QueryBridgeRequestsForResponse defines the QueryBridgeRequestsForResponse message.
 message QueryBridgeRequestsForResponse {
   repeated BridgeRequest requests = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryBridgeLineRequest defines the QueryBridgeLineRequest message.
+message QueryBridgeLineRequest {
+  uint64 bridge_id = 1;
+}
+
+// QueryBridgeLineResponse defines the QueryBridgeLineResponse message.
+message QueryBridgeLineResponse {
+  BridgeHandouts line = 1 [(gogoproto.nullable) = false];
+  // stopped is true once enough of those given the line reported it dead:
+  // it is no longer handed out until the bridge moves.
+  bool stopped = 2;
+  // full is true once it was given to as many as allowed.
+  bool full = 3;
 }

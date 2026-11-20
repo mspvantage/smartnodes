@@ -65,6 +65,10 @@ type Keeper struct {
 	RoundBudget collections.Map[uint64, uint64]
 	RoundWeight collections.Map[uint64, uint64]
 	RewardOwed  collections.Item[uint64]
+	// RoundAim is each tallied node's chance of being probed, in basis
+	// points, fixed when the round starts. A node with no entry had no
+	// record then, and counts as new.
+	RoundAim collections.Map[collections.Pair[uint64, uint64], uint64]
 }
 
 func NewKeeper(
@@ -110,6 +114,7 @@ func NewKeeper(
 		RoundBudget:   collections.NewMap(sb, types.RoundBudgetKey, "roundBudget", collections.Uint64Key, collections.Uint64Value),
 		RoundWeight:   collections.NewMap(sb, types.RoundWeightKey, "roundWeight", collections.Uint64Key, collections.Uint64Value),
 		RewardOwed:    collections.NewItem(sb, types.RewardOwedKey, "rewardOwed", collections.Uint64Value),
+		RoundAim:      collections.NewMap(sb, types.RoundAimKey, "roundAim", collections.PairKeyCodec(collections.Uint64Key, collections.Uint64Key), collections.Uint64Value),
 	}
 	schema, err := sb.Build()
 	if err != nil {

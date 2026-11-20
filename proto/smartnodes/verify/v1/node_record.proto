@@ -40,4 +40,12 @@ message NodeRecord {
   uint64 reward_balance = 15;
   // reward_paid is the total reward claimed so far.
   uint64 reward_paid = 16;
+  // Customer flags raise how often the node is probed, from flagged_from to
+  // flagged_until, both rounds. flags counts every flag ever.
+  uint64 flagged_from = 17;
+  uint64 flagged_until = 18;
+  uint64 flags = 19;
+  // unjailed_round is the round the node was last unjailed in, or 0; it is
+  // probed more often for a while after.
+  uint64 unjailed_round = 20;
 }

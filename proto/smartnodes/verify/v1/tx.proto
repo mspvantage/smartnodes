@@ -42,6 +42,11 @@ service Msg {
 
   // FundNodeRewards adds coins to the node rewards pool. Anyone may.
   rpc FundNodeRewards(MsgFundNodeRewards) returns (MsgFundNodeRewardsResponse);
+
+  // FlagNode is a customer's flag on a node after a bad session. It spends
+  // a ticket made out to the node, which pays the node as usual, and makes
+  // the node probed more often for a while. It is not a verdict.
+  rpc FlagNode(MsgFlagNode) returns (MsgFlagNodeResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -155,3 +160,22 @@ message MsgFundNodeRewards {
 
 // MsgFundNodeRewardsResponse defines the MsgFundNodeRewardsResponse message.
 message MsgFundNodeRewardsResponse {}
+
+// MsgFlagNode defines the MsgFlagNode message. Anyone may send it for the
+// customer, as nodes do for ticket and bridge messages, so the customer
+// needs no account.
+message MsgFlagNode {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "smartnodes/x/verify/MsgFlagNode";
+  string signer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 node_id = 2;
+  uint64 key_id = 3;
+  // ticket is an unspent ticket made out to the node, base64.
+  string ticket = 4;
+}
+
+// MsgFlagNodeResponse defines the MsgFlagNodeResponse message.
+message MsgFlagNodeResponse {
+  // until is the last round of extra probing.
+  uint64 until = 1;
+}

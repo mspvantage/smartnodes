@@ -23,4 +23,14 @@ message Params {
   // bridge_handout_limit is how many people one bridge line is given to
   // before the bridge is no longer handed out, until it moves.
   uint64 bridge_handout_limit = 7;
+  // bridge_report_blocks is how long after answering a bridge waits to be
+  // paid. Until then the requester can prove the answer was rubbish.
+  uint64 bridge_report_blocks = 8;
+  // bridge_bad_slash_bps is the share of a bridge's bond burned when its
+  // answer is proven to be rubbish.
+  uint64 bridge_bad_slash_bps = 9;
+  // A line stops being handed out once bridge_dead_reports requesters, and
+  // at least bridge_dead_pct percent of those given it, report it dead.
+  uint64 bridge_dead_reports = 10;
+  uint64 bridge_dead_pct = 11;
 }

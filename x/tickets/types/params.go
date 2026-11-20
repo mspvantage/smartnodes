@@ -63,6 +63,10 @@ func NewParams(
 		BridgeAnswerBlocks:     DefaultBridgeAnswerBlocks,
 		BridgeTries:            DefaultBridgeTries,
 		BridgeHandoutLimit:     DefaultBridgeHandoutLimit,
+		BridgeReportBlocks:     DefaultBridgeReportBlocks,
+		BridgeBadSlashBps:      DefaultBridgeBadSlashBps,
+		BridgeDeadReports:      DefaultBridgeDeadReports,
+		BridgeDeadPct:          DefaultBridgeDeadPct,
 	}
 }
 
@@ -74,6 +78,14 @@ const (
 	DefaultBridgeAnswerBlocks uint64 = 100
 	DefaultBridgeTries        uint64 = 3
 	DefaultBridgeHandoutLimit uint64 = 20
+	// A bridge is paid about an hour after answering; a proven rubbish
+	// answer burns 10% of its bond; a line stops being handed out once at
+	// least 3 people, and a quarter of those given it, report it dead.
+	DefaultBridgeReportBlocks uint64 = 720
+	DefaultBridgeBadSlashBps  uint64 = 1_000
+	DefaultBridgeDeadReports  uint64 = 3
+	DefaultBridgeDeadPct      uint64 = 25
+	MaxBridgeReportBlocks     uint64 = 100_000
 )
 
 // DefaultParams returns a default set of parameters.
@@ -112,6 +124,15 @@ func (p Params) Validate() error {
 	}
 	if p.BridgeHandoutLimit == 0 || p.BridgeHandoutLimit > MaxBridgeHandoutLimit {
 		return errorsmod.Wrapf(ErrInvalidParams, "bridge_handout_limit must be 1-%d, got %d", MaxBridgeHandoutLimit, p.BridgeHandoutLimit)
+	}
+	if p.BridgeReportBlocks == 0 || p.BridgeReportBlocks > MaxBridgeReportBlocks {
+		return errorsmod.Wrapf(ErrInvalidParams, "bridge_report_blocks must be 1-%d, got %d", MaxBridgeReportBlocks, p.BridgeReportBlocks)
+	}
+	if p.BridgeBadSlashBps > BasisPoints {
+		return errorsmod.Wrapf(ErrInvalidParams, "bridge_bad_slash_bps must be 0-%d", BasisPoints)
+	}
+	if p.BridgeDeadReports == 0 || p.BridgeDeadPct == 0 || p.BridgeDeadPct > 100 {
+		return errorsmod.Wrap(ErrInvalidParams, "bridge_dead_reports must be at least 1 and bridge_dead_pct 1-100")
 	}
 
 	return nil

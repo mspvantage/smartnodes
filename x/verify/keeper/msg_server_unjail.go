@@ -58,6 +58,10 @@ func (k msgServer) Unjail(ctx context.Context, msg *types.MsgUnjail) (*types.Msg
 
 	rec.Jailed = false
 	rec.ConsecutiveFails = 0
+	if round, _, err := k.CurrentRound(ctx); err == nil {
+		// From the next round, so this round's assignments stay as they were.
+		rec.UnjailedRound = round + 1
+	}
 	if err := k.NodeRecord.Set(ctx, msg.NodeId, rec); err != nil {
 		return nil, err
 	}

@@ -38,6 +38,9 @@ service Msg {
 
   // AnswerBridge is a bridge's sealed answer to a request assigned to it.
   rpc AnswerBridge(MsgAnswerBridge) returns (MsgAnswerBridgeResponse);
+
+  // ReportBridge reports a rubbish answer, with proof, or a dead line.
+  rpc ReportBridge(MsgReportBridge) returns (MsgReportBridgeResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -119,6 +122,9 @@ message MsgRequestBridge {
   uint64 key_id = 2;
   string ticket = 3;
   string request_key = 4;
+  // report_hash is sha256 of a 32-byte secret the device keeps, base64;
+  // optional. Showing the secret later proves the device was given the line.
+  string report_hash = 5;
 }
 
 // MsgRequestBridgeResponse defines the MsgRequestBridgeResponse message.
@@ -137,3 +143,38 @@ message MsgAnswerBridge {
 
 // MsgAnswerBridgeResponse defines the MsgAnswerBridgeResponse message.
 message MsgAnswerBridgeResponse {}
+
+// MsgReportBridge reports the line a request was given. Anyone can send it
+// for the device, as with requests, so no device account is needed.
+//
+// With request_secret (the one-time private key, base64), it proves the
+// answer was rubbish: the chain opens the sealed answer and checks it
+// against the fingerprint the bridge had committed to. If it does not
+// match, the bridge's bond is burned in part and, if it has not been paid
+// yet, the request passes to another bridge. A good answer is never
+// reported this way: the device checks the line first, and a failed report
+// would publish the line.
+//
+// With report_secret (the secret behind report_hash, base64), it reports
+// the line dead. That cannot be proven, so it only counts towards the line
+// no longer being handed out.
+message MsgReportBridge {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "smartnodes/x/tickets/MsgReportBridge";
+  string signer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 request_id = 2;
+  string request_secret = 3;
+  string report_secret = 4;
+  // new_request_key is a fresh one-time key for the bridge asked next,
+  // needed with request_secret: the proof publishes the old key, so an
+  // answer sealed to it again could be read by anyone.
+  string new_request_key = 5;
+}
+
+// MsgReportBridgeResponse says what the report did.
+message MsgReportBridgeResponse {
+  // proven is true if the answer was shown to be rubbish.
+  bool proven = 1;
+  // reassigned is the bridge now asked to answer instead, or 0.
+  uint64 reassigned = 2;
+}

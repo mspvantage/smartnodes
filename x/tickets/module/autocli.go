@@ -42,6 +42,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "bridge_id"}},
 				},
 				{
+					RpcMethod:      "BridgeLine",
+					Use:            "bridge-line [bridge-id]",
+					Short:          "How a bridge's current line stands: given out, reported dead, still handed out",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "bridge_id"}},
+				},
+				{
 					RpcMethod:      "TicketSpent",
 					Use:            "ticket-spent [key-id] [ticket-key-hex]",
 					Short:          "Shows whether a ticket has been redeemed",
@@ -104,6 +110,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:            "answer-bridge [request-id] [sealed]",
 					Short:          "A bridge's sealed answer to a request (the node program sends this)",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "request_id"}, {ProtoField: "sealed"}},
+				},
+				{
+					RpcMethod:      "ReportBridge",
+					Use:            "report-bridge [request-id]",
+					Short:          "Prove a bridge answer was rubbish (--request-secret) or report its line dead (--report-secret); smartvpn sends this",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "request_id"}},
 				},
 			},
 		},

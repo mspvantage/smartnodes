@@ -157,6 +157,9 @@ func (k Keeper) startRound(ctx sdk.Context, round uint64) error {
 	if err := k.applySetChanges(ctx); err != nil {
 		return err
 	}
+	if err := k.fixAim(ctx, round); err != nil {
+		return err
+	}
 
 	// The reward budget is set on its own copy of the state. If it fails,
 	// the round still starts; it simply has no reward budget.

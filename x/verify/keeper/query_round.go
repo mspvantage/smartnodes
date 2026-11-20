@@ -93,7 +93,11 @@ func (q queryServer) Assignment(ctx context.Context, req *types.QueryAssignmentR
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if jailed || !types.Selected(seed, req.NodeId, params.SampleBps) {
+	bps, err := q.k.aimedBps(ctx, params, round, req.NodeId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if jailed || !types.Selected(seed, req.NodeId, bps) {
 		return res, nil
 	}
 	// A bridge is never probed: probing would show its address to probers,
@@ -160,8 +164,12 @@ func (q queryServer) ProberAssignments(ctx context.Context, req *types.QueryProb
 		return res, nil
 	}
 	err = q.k.registryKeeper.WalkNodes(ctx, func(n registrytypes.Node) (bool, error) {
-		if n.Status != registrytypes.StatusActive || n.Commitment != "" || !types.Selected(seed, n.Id, params.SampleBps) {
+		if n.Status != registrytypes.StatusActive || n.Commitment != "" {
 			return false, nil
+		}
+		bps, err := q.k.aimedBps(ctx, params, round, n.Id)
+		if err != nil || !types.Selected(seed, n.Id, bps) {
+			return false, err
 		}
 		jailed, err := q.k.isJailed(ctx, n.Id)
 		if err != nil || jailed {

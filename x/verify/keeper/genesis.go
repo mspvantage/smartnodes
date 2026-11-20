@@ -53,6 +53,8 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	var owed uint64
 	for _, rec := range genState.NodeRecordList {
 		rec.PendingRound, rec.PendingWeight = 0, 0
+		// Flag and unjail windows are counted in rounds, which restart.
+		rec.FlaggedFrom, rec.FlaggedUntil, rec.UnjailedRound = 0, 0, 0
 		owed += rec.RewardBalance
 		if err := k.NodeRecord.Set(ctx, rec.NodeId, rec); err != nil {
 			return err

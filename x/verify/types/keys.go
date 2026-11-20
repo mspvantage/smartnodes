@@ -62,4 +62,7 @@ var (
 	// RewardOwedKey holds the total of all rewards earned and not yet
 	// claimed.
 	RewardOwedKey = collections.NewPrefix("reward/owed/")
+	// RoundAimKey holds each node's chance of being probed in a round, fixed
+	// when the round starts, by (round, node).
+	RoundAimKey = collections.NewPrefix("aim/")
 )

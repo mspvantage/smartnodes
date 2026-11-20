@@ -34,6 +34,7 @@ func bridgeWorld(t *testing.T) *world {
 	p, err := w.keeper.Params.Get(w.ctx)
 	require.NoError(t, err)
 	p.BridgeAnswerBlocks, p.BridgeTries, p.BridgeHandoutLimit, p.RetentionBlocks = 5, 3, 20, 10
+	p.BridgeReportBlocks, p.BridgeDeadReports, p.BridgeDeadPct = 4, 2, 50
 	require.NoError(t, w.keeper.Params.Set(w.ctx, p))
 	return w
 }
@@ -73,6 +74,10 @@ func TestBridgeRequestAnswered(t *testing.T) {
 	before := w.balance(owner)
 	_, err = w.ms.AnswerBridge(w.ctx, &types.MsgAnswerBridge{Signer: w.operatorOf(req.BridgeId), RequestId: req.Id, Sealed: sealedAnswer()})
 	require.NoError(t, err)
+	// Paid only once the time to prove a rubbish answer has passed.
+	require.True(t, w.balance(owner).Equal(before))
+	w.requireEscrowExact(t)
+	w.nextBlocks(t, 5)
 	requireInt(t, nodeShare, w.balance(owner).Sub(before))
 	w.requireEscrowExact(t)
 

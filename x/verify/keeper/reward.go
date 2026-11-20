@@ -216,7 +216,11 @@ func (k Keeper) earnReward(ctx context.Context, rec *types.NodeRecord, node regi
 	if err != nil {
 		return err
 	}
-	weight := RewardCapPerPass(params, minBond)
+	aimed, err := k.aimedBps(ctx, params, round, node.Id)
+	if err != nil {
+		return err
+	}
+	weight := PassWeight(RewardCapPerPass(params, minBond), params.SampleBps, aimed)
 	if weight == 0 {
 		return nil
 	}

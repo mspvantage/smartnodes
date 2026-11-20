@@ -157,6 +157,27 @@ type mockTickets struct {
 	// failFund makes funding the prober fund fail, to test that a failed
 	// reward budget cannot stop a round from starting.
 	failFund bool
+	// flagged records tickets spent on flags, by node.
+	flagged map[uint64][]string
+}
+
+// RedeemForFlag accepts any ticket not seen before, except "bad".
+func (m *mockTickets) RedeemForFlag(_ context.Context, nodeID, _ uint64, ticket string) error {
+	if ticket == "bad" {
+		return sdkerrors.ErrInvalidRequest
+	}
+	if m.flagged == nil {
+		m.flagged = map[uint64][]string{}
+	}
+	for _, list := range m.flagged {
+		for _, t := range list {
+			if t == ticket {
+				return sdkerrors.ErrInvalidRequest
+			}
+		}
+	}
+	m.flagged[nodeID] = append(m.flagged[nodeID], ticket)
+	return nil
 }
 
 // FundProberFund moves coins from a module account into the fund.

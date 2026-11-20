@@ -90,3 +90,73 @@ func TestOpenRefusesReadableFile(t *testing.T) {
 		t.Fatal("opened a world-readable wallet")
 	}
 }
+
+// Two programs sharing one wallet never spend the same ticket. Each Open
+// here stands for a separate program: its own copy of the file in memory
+// and its own lock file handle.
+func TestSharedWalletNeverDoubleSpends(t *testing.T) {
+	const n = 20
+	path := makeWallet(t, n)
+	a, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		ticket string
+		err    error
+	}
+	out := make(chan result, 2*n)
+	for _, w := range []*Wallet{a, b} {
+		go func(w *Wallet) {
+			for i := 0; i < n; i++ {
+				s, err := w.Spend(9)
+				out <- result{s, err}
+			}
+		}(w)
+	}
+	seen := map[string]bool{}
+	empty := 0
+	for i := 0; i < 2*n; i++ {
+		r := <-out
+		switch {
+		case r.err == ErrEmpty:
+			empty++
+		case r.err != nil:
+			t.Fatal(r.err)
+		case seen[r.ticket]:
+			t.Fatal("the same ticket was spent twice")
+		default:
+			seen[r.ticket] = true
+		}
+	}
+	if len(seen) != n || empty != n {
+		t.Fatalf("spent %d, empty %d", len(seen), empty)
+	}
+	if a.Left() != 0 || b.Left() != 0 {
+		t.Fatalf("left %d %d", a.Left(), b.Left())
+	}
+}
+
+func TestReplacedWalletRefused(t *testing.T) {
+	path := makeWallet(t, 1)
+	w, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := makeWallet(t, 1)
+	raw, _ := os.ReadFile(other)
+	var f file
+	_ = json.Unmarshal(raw, &f)
+	f.KeyID = 7
+	raw, _ = json.Marshal(f)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Spend(1); err == nil || !strings.Contains(err.Error(), "another key") {
+		t.Fatalf("want refusal, got %v", err)
+	}
+}

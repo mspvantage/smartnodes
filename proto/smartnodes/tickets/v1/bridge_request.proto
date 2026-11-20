@@ -30,6 +30,21 @@ message BridgeRequest {
   string sealed = 7;
   // state is 1 while open, 2 once answered, 3 if no bridge answered.
   uint32 state = 8;
+  // report_hash is sha256 of a secret only the requester knows, base64. By
+  // showing the secret later the requester proves, without an account or
+  // anything else that names it, that it was given this line.
+  string report_hash = 9;
+  // commitment is the bridge's fingerprint when it answered: the answer
+  // must open to a line with this fingerprint.
+  string commitment = 10;
+  // paid is true once the answering bridge has been paid. Payment waits
+  // bridge_report_blocks after the answer, so a rubbish answer can be
+  // proven first and the request passed to another bridge.
+  bool paid = 11;
+  // reported is true once the requester has reported the line dead.
+  bool reported = 12;
+  // bad lists bridges whose answers were proven to be rubbish.
+  repeated uint64 bad = 13;
 }
 
 // BridgeHandouts counts how many people a bridge's current line was given
@@ -38,4 +53,7 @@ message BridgeHandouts {
   uint64 bridge_id = 1;
   string commitment = 2;
   uint64 count = 3;
+  // dead counts requesters who reported this line not working. Once enough
+  // have, the line is no longer handed out until the bridge moves.
+  uint64 dead = 4;
 }

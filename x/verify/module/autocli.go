@@ -116,6 +116,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Send a unjail tx",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}},
 				},
+				{
+					RpcMethod:      "FlagNode",
+					Use:            "flag-node [node-id] [key-id] [ticket]",
+					Short:          "A customer's flag on a node: spends a ticket made out to it and has it probed more often for a while (smartvpn sends this)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}, {ProtoField: "key_id"}, {ProtoField: "ticket"}},
+				},
 			},
 		},
 	}

@@ -11,6 +11,7 @@ func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 		&MsgRedeemTickets{},
 		&MsgRequestBridge{},
 		&MsgAnswerBridge{},
+		&MsgReportBridge{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),

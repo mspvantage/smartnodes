@@ -131,6 +131,19 @@ func (m *mockRegistry) GetNode(_ context.Context, id uint64) (registrytypes.Node
 	return node, nil
 }
 
+// SlashNode burns from a node's bond. The bond is not held by the tickets
+// module, so its escrow is unchanged.
+func (m *mockRegistry) SlashNode(_ context.Context, id uint64, amount math.Int) (math.Int, error) {
+	node, ok := m.nodes[id]
+	if !ok {
+		return math.ZeroInt(), registrytypes.ErrNodeNotFound
+	}
+	burn := math.MinInt(amount, node.Bond.Amount)
+	node.Bond.Amount = node.Bond.Amount.Sub(burn)
+	m.nodes[id] = node
+	return burn, nil
+}
+
 type fixture struct {
 	ctx          context.Context
 	sdkCtx       sdk.Context

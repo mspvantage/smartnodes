@@ -55,10 +55,23 @@ type Chain interface {
 
 // BridgeRelay is what a node needs from the chain to pass bridge-line
 // requests on for its clients.
+// BridgeAnswer is what the chain holds for a bridge request.
+type BridgeAnswer struct {
+	ID     uint64
+	Sealed string
+	// State is 1 open, 2 answered, 3 lapsed.
+	State uint32
+	// Commitment is the fingerprint the answering bridge had committed to.
+	Commitment string
+	BridgeID   uint64
+}
+
 type BridgeRelay interface {
-	RequestBridge(ctx context.Context, keyID uint64, ticket, requestKey string) error
-	BridgeAnswer(ctx context.Context, requestKey string) (sealed string, state uint32, err error)
+	RequestBridge(ctx context.Context, keyID uint64, ticket, requestKey, reportHash string) error
+	BridgeAnswer(ctx context.Context, requestKey string) (BridgeAnswer, error)
 	BridgeFingerprint(ctx context.Context, nodeID uint64) (string, error)
+	ReportBridge(ctx context.Context, requestID uint64, requestSecret, reportSecret, newRequestKey string) (reassigned uint64, err error)
+	FlagNode(ctx context.Context, nodeID, keyID uint64, ticket string) error
 }
 
 // RedeemError says which ticket in a batch the chain refused.
@@ -669,16 +682,38 @@ func (n *Node) bridgeOp(h control.Hello) control.Reply {
 	defer cancel()
 	switch h.Op {
 	case control.OpBridgeRequest:
-		if err := n.cfg.Bridges.RequestBridge(ctx, h.KeyID, h.Tickets[0], h.RequestKey); err != nil {
+		if err := n.cfg.Bridges.RequestBridge(ctx, h.KeyID, h.Tickets[0], h.RequestKey, h.ReportHash); err != nil {
 			return control.Reply{Error: "the chain refused the request: " + err.Error()}
 		}
 		return control.Reply{OK: true}
 	case control.OpBridgeAnswer:
-		sealed, state, err := n.cfg.Bridges.BridgeAnswer(ctx, h.RequestKey)
+		a, err := n.cfg.Bridges.BridgeAnswer(ctx, h.RequestKey)
 		if err != nil {
 			return control.Reply{Error: "could not read the request: " + err.Error()}
 		}
-		return control.Reply{OK: true, Sealed: sealed, State: state}
+		return control.Reply{OK: true, Sealed: a.Sealed, State: a.State, Commitment: a.Commitment, BridgeID: a.BridgeID}
+	case control.OpBridgeReport:
+		a, err := n.cfg.Bridges.BridgeAnswer(ctx, h.RequestKey)
+		if err != nil {
+			return control.Reply{Error: "could not read the request: " + err.Error()}
+		}
+		requestSecret, reportSecret, newKey := h.Secret, "", h.NewRequestKey
+		if h.Dead {
+			requestSecret, reportSecret, newKey = "", h.Secret, ""
+		}
+		next, err := n.cfg.Bridges.ReportBridge(ctx, a.ID, requestSecret, reportSecret, newKey)
+		if err != nil {
+			return control.Reply{Error: "the chain refused the report: " + err.Error()}
+		}
+		return control.Reply{OK: true, Reassigned: next}
+	case control.OpFlag:
+		// A node passes on flags against any node, itself included; a
+		// device whose exit will not pass on a flag against it sends the
+		// flag through its next exit.
+		if err := n.cfg.Bridges.FlagNode(ctx, h.NodeID, h.KeyID, h.Tickets[0]); err != nil {
+			return control.Reply{Error: "the chain refused the flag: " + err.Error()}
+		}
+		return control.Reply{OK: true}
 	case control.OpBridgeFingerprint:
 		fp, err := n.cfg.Bridges.BridgeFingerprint(ctx, h.NodeID)
 		if err != nil {

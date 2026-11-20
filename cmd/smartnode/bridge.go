@@ -104,11 +104,26 @@ func answerBridgeRequests(ctx context.Context, cli *chain.CLI, line bridge.Line)
 	total := 0
 	tick := time.NewTicker(10 * time.Second)
 	defer tick.Stop()
+	var lastCheck time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
+		}
+		if time.Since(lastCheck) > 10*time.Minute {
+			lastCheck = time.Now()
+			qctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			st, err := cli.BridgeLine(qctx, line.NodeID)
+			cancel()
+			switch {
+			case err != nil:
+			case st.Stopped:
+				log.Printf("MOVE THIS BRIDGE: %d of the %d people given its line reported it not working, so it is no longer handed out. "+
+					"Change its port (or address) and run update-bridge; the new line is handed out again", st.Dead, st.Given)
+			case st.Full:
+				log.Printf("this bridge's line has been given to %d people, the most allowed; move it (new port, update-bridge) to be handed out again", st.Given)
+			}
 		}
 		qctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		reqs, err := cli.BridgeRequestsFor(qctx, line.NodeID)

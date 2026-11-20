@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/netip"
 	"sync"
 	"testing"
@@ -778,17 +779,27 @@ func TestClose(t *testing.T) {
 
 type fakeRelay struct {
 	requested []string
+	reports   []string
+	flags     []string
 	state     uint32
 }
 
-func (f *fakeRelay) RequestBridge(_ context.Context, _ uint64, ticket, rk string) error {
-	f.requested = append(f.requested, ticket+"|"+rk)
+func (f *fakeRelay) RequestBridge(_ context.Context, _ uint64, ticket, rk, hash string) error {
+	f.requested = append(f.requested, ticket+"|"+rk+"|"+hash)
 	return nil
 }
-func (f *fakeRelay) BridgeAnswer(context.Context, string) (string, uint32, error) {
-	return "c2VhbGVk", f.state, nil
+func (f *fakeRelay) BridgeAnswer(context.Context, string) (BridgeAnswer, error) {
+	return BridgeAnswer{ID: 4, Sealed: "c2VhbGVk", State: f.state, Commitment: "cd", BridgeID: 9}, nil
 }
 func (f *fakeRelay) BridgeFingerprint(context.Context, uint64) (string, error) { return "ab", nil }
+func (f *fakeRelay) ReportBridge(_ context.Context, id uint64, reqSecret, repSecret, newKey string) (uint64, error) {
+	f.reports = append(f.reports, fmt.Sprintf("%d|%s|%s|%s", id, reqSecret, repSecret, newKey))
+	return 11, nil
+}
+func (f *fakeRelay) FlagNode(_ context.Context, nodeID, keyID uint64, ticket string) error {
+	f.flags = append(f.flags, fmt.Sprintf("%d|%d|%s", nodeID, keyID, ticket))
+	return nil
+}
 
 func TestBridgeOps(t *testing.T) {
 	relay := &fakeRelay{state: 2}
@@ -799,7 +810,20 @@ func TestBridgeOps(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeAnswer, RequestKey: rk})
-	if !r.OK || r.Sealed != "c2VhbGVk" || r.State != 2 {
+	if !r.OK || r.Sealed != "c2VhbGVk" || r.State != 2 || r.Commitment != "cd" || r.BridgeID != 9 {
+		t.Fatalf("%+v", r)
+	}
+	// Reports find the request by its key; dead and rubbish go apart.
+	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeReport, RequestKey: rk, Secret: rk, NewRequestKey: rk})
+	if !r.OK || r.Reassigned != 11 {
+		t.Fatalf("%+v", r)
+	}
+	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeReport, RequestKey: rk, Secret: rk, Dead: true})
+	if !r.OK || len(relay.reports) != 2 || relay.reports[0] != "4|"+rk+"||"+rk || relay.reports[1] != "4||"+rk+"|" {
+		t.Fatalf("%+v %v", r, relay.reports)
+	}
+	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpFlag, NodeID: 3, KeyID: keyID, Tickets: []string{"t"}})
+	if !r.OK || len(relay.flags) != 1 {
 		t.Fatalf("%+v", r)
 	}
 	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeFingerprint, NodeID: 3})
