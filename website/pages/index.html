@@ -1,0 +1,104 @@
+title: SmartNodes: a private VPN run by its users
+description: SmartNodes is a decentralised VPN: anonymous tickets, two hops, traffic that looks like ordinary web browsing, and nodes checked by independent probers.
+nav: index
+
+<section class="sn-hero">
+  <div class="container-xl">
+    <div class="sn-eyebrow mb-2">Decentralised VPN · open source · test network</div>
+    <h1 class="mb-3">A VPN where nobody, not even<br class="d-none d-md-inline"> the network, can tie you to what you do.</h1>
+    <p class="lead mb-4">SmartNodes is a VPN run by many independent operators and coordinated by its own blockchain. You pay with anonymous tickets, your traffic crosses two nodes that never learn both ends, and it can look like an ordinary visit to a well-known website, so it works where VPNs are blocked.</p>
+    <div class="btn-list">
+      <a href="how-it-works.html" class="btn btn-primary btn-lg">How it works</a>
+      <a href="run-a-node.html" class="btn btn-outline-secondary btn-lg">Run a node</a>
+      <a href="{repo}" class="btn btn-ghost-secondary btn-lg">Read the code</a>
+    </div>
+  </div>
+</section>
+
+<section class="sn-section">
+  <div class="container-xl">
+    <h2 class="mb-4">What makes it different</h2>
+    <div class="row row-cards">
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2"/></svg></div>
+        <h3>Pay without being known</h3>
+        <p class="text-secondary mb-0">You buy tickets once; they are signed blind, so when a node is paid, nobody (not the node, not the issuers, not anyone reading the chain) can tell which purchase, or which person, a ticket came from.</p>
+      </div></div>
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><path d="M6.7 10.9 10.3 7.1M13.7 7.1l3.6 3.8"/></svg></div>
+        <h3>Two hops, split knowledge</h3>
+        <p class="text-secondary mb-0">The entry node sees your address but not what you visit; the exit node sees what you visit but not who you are. They are run by different operators and paid separately, at times that cannot be lined up.</p>
+      </div></div>
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3A12 12 0 0 1 12 21 12 12 0 0 1 3.5 6 12 12 0 0 0 12 3"/></svg></div>
+        <h3>Works where VPNs are blocked</h3>
+        <p class="text-secondary mb-0">Entry nodes can disguise the connection with Xray REALITY, so it looks like a visit to a real website. A censor that checks finds that website. When WireGuard is blocked, the app switches over by itself.</p>
+      </div></div>
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+        <h3>Bridges a censor cannot list</h3>
+        <p class="text-secondary mb-0">Bridges are entry nodes on no public list. Each line costs a ticket and goes to a few people, so collecting them is slow and expensive. Bridges that give out rubbish lose part of their bond, and dead lines are reported and replaced.</p>
+      </div></div>
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+        <h3>Nodes are checked, not trusted</h3>
+        <p class="text-secondary mb-0">Independent probers, assigned at random, test each node through real paid sessions and report sealed results. Nodes that fail are hidden; nodes caught tampering lose bond. Operators cannot pick their own judges.</p>
+      </div></div>
+      <div class="col-md-6 col-lg-4"><div class="card card-body h-100">
+        <div class="sn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+        <h3>Nothing to log</h3>
+        <p class="text-secondary mb-0">Node software keeps sessions in memory only, refuses to start where it could write them to disk (in strict mode), and records only totals. It is built so an operator has nothing useful to hand over.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sn-section">
+  <div class="container-xl">
+    <h2 class="mb-2">How it compares</h2>
+    <p class="text-secondary mb-4">A summary of the design. SmartNodes has not been audited yet, so treat its column as what it is built to do.</p>
+    <div class="card"><div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead><tr><th></th><th>Typical VPN company</th><th>Typical on-chain dVPN</th><th>SmartNodes</th></tr></thead>
+        <tbody>
+          <tr><td>Who runs the servers</td><td>One company</td><td>Many operators</td><td>Many operators, bonded</td></tr>
+          <tr><td>Payment linked to you</td><td class="sn-no">Card or account</td><td class="sn-no">Usually: each session is a transaction from your wallet</td><td class="sn-yes">No: blind-signed tickets</td></tr>
+          <tr><td>One server sees who and where</td><td class="sn-no">Yes</td><td class="sn-no">Yes, one hop</td><td class="sn-yes">No: two hops, two operators</td></tr>
+          <tr><td>Looks like ordinary web traffic</td><td class="sn-part">Some</td><td class="sn-part">Some (V2Ray)</td><td class="sn-yes">Yes: REALITY, automatic fallback</td></tr>
+          <tr><td>Entry points a censor cannot list</td><td class="sn-part">Rarely</td><td class="sn-no">No: node addresses are public</td><td class="sn-yes">Bridges, paid hand-out</td></tr>
+          <tr><td>Servers independently tested</td><td class="sn-no">Self-reported</td><td class="sn-part">Uptime checks</td><td class="sn-yes">Random probers, sealed reports</td></tr>
+          <tr><td>Independent security audit</td><td class="sn-part">Varies</td><td class="sn-part">Varies</td><td class="sn-no">Not yet</td></tr>
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</section>
+
+<section class="sn-section" id="status">
+  <div class="container-xl">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2>Where things stand</h2>
+        <p class="text-secondary">SmartNodes is being built in the open. Everything below has been built and tested on a private test chain; none of it has carried real value or real users yet.</p>
+        <ul class="list-unstyled">
+          <li class="mb-2"><span class="badge bg-green-lt me-2">Built</span>The chain: node registry, tickets, verification, rewards, governance safeguards</li>
+          <li class="mb-2"><span class="badge bg-green-lt me-2">Built</span>Node software: entry, exit and bridge nodes, with the REALITY disguise</li>
+          <li class="mb-2"><span class="badge bg-green-lt me-2">Built</span>Command-line client for Linux, and the prober</li>
+          <li class="mb-2"><span class="badge bg-yellow-lt me-2">Next</span>Public test network with outside operators</li>
+          <li class="mb-2"><span class="badge bg-yellow-lt me-2">Next</span>Independent cryptography review and security audit</li>
+          <li class="mb-2"><span class="badge bg-secondary-lt me-2">Later</span>Apps for Windows, macOS, Linux, Android and iPhone</li>
+          <li class="mb-2"><span class="badge bg-secondary-lt me-2">Later</span>Threshold ticket issuers, so no single key can issue tickets</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <h2>Get involved</h2>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action bg-transparent" href="run-a-node.html"><b>Run a node.</b> <span class="text-secondary">Entry, exit or bridge: what you need and how to set it up.</span></a>
+          <a class="list-group-item list-group-item-action bg-transparent" href="use.html"><b>Try the client.</b> <span class="text-secondary">Connect through two hops from a Linux machine.</span></a>
+          <a class="list-group-item list-group-item-action bg-transparent" href="build.html"><b>Build and review.</b> <span class="text-secondary">Build from source, run the tests, read the design.</span></a>
+          <a class="list-group-item list-group-item-action bg-transparent" href="security.html"><b>Break it.</b> <span class="text-secondary">What it protects, what it does not, and how to report a flaw.</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

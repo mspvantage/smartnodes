@@ -1,0 +1,37 @@
+# Publishes the website in website/site to GitHub Pages whenever it changes.
+# One-time set-up in the repository: Settings > Pages > Source: GitHub Actions.
+name: website
+
+on:
+  push:
+    branches: [main]
+    paths: ["website/**", ".github/workflows/website.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the built site matches the pages
+        run: |
+          cd website
+          python3 build.py
+          git diff --exit-code -- site || { echo "website/site is out of date: run 'python3 build.py' in website/ and commit"; exit 1; }
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/site
+      - id: deploy
+        uses: actions/deploy-pages@v4

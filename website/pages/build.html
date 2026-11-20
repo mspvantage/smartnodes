@@ -1,0 +1,51 @@
+title: Build and develop
+description: Build SmartNodes from source, run the tests and a local test chain, and find your way around the code.
+nav: build
+
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#layout">The code</a><a href="#build">Build</a><a href="#test">Tests</a><a href="#local">A local test chain</a><a href="#trials">Live trials</a><a href="#site">This website</a><a href="#contribute">Contributing</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Build and develop</h1>
+<p>SmartNodes is written in Go. The chain is built on the Cosmos SDK and CometBFT; the VPN uses kernel WireGuard, the Noise protocol for its control channel, and Xray for the disguise.</p>
+
+<h2 id="layout">The code</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td><code>x/registry</code></td><td>Nodes, bonds, tiers, service keys, disguises, bridges, sponsored bonds.</td></tr>
+<tr><td><code>x/tickets</code></td><td>Issuer keys, blind-signed tickets, redemption, fees, bridge hand-out and reports.</td></tr>
+<tr><td><code>x/verify</code></td><td>Probers, random assignment, sealed reports, tallies, jail, aimed probing, customer flags, availability rewards.</td></tr>
+<tr><td><code>x/rewards</code></td><td>The equal share for validators, the commission ceiling, non-voting stake in governance.</td></tr>
+<tr><td><code>vpn/</code></td><td>The VPN itself: control channel, node, WireGuard, kill switch, name server, disguise, bridge lines, wallet, chain client, probe.</td></tr>
+<tr><td><code>cmd/</code></td><td>The five programs: <code>smartnodesd</code>, <code>smartnode</code>, <code>smartvpn</code>, <code>smartprobe</code>, <code>ticketctl</code>.</td></tr>
+<tr><td><code>proto/</code></td><td>The chain's message definitions.</td></tr>
+<tr><td><code>website/</code></td><td>This website.</td></tr>
+</tbody></table></div></div>
+
+<h2 id="build">Build</h2>
+<pre><code>git clone {repo}.git
+cd smartnodes
+go build -o bin/ ./cmd/...</code></pre>
+<p>After changing anything in <code>proto/</code>, regenerate the Go code with <a href="https://docs.ignite.com">Ignite CLI</a> (<code>ignite cosmos generate proto-go</code>), or simply start the local chain below, which does it for you.</p>
+
+<h2 id="test">Tests</h2>
+<pre><code>go test ./x/... ./vpn/... ./cmd/...</code></pre>
+<p>The chain modules' tests check their bookkeeping after every step: for example, that the tickets module holds exactly what its records say it should.</p>
+
+<h2 id="local">A local test chain</h2>
+<pre><code>ignite cosmos chain serve --reset-once</code></pre>
+<p>This builds the chain, starts a single-machine network with test accounts <code>alice</code> and <code>bob</code>, and keeps it running. Its settings are in <code>config.yml</code>, including a short verification round so tests do not take hours. <code>--reset-once</code> starts from a clean state.</p>
+
+<h2 id="trials">Live trials</h2>
+<p>Each feature of the VPN is tried end to end on one Linux server, using network namespaces to stand in for separate machines: a device, an entry, exits, bridges, and a censor that blocks addresses. Trials need root, a fresh local chain, and Xray. They clean up after themselves.</p>
+
+<h2 id="site">This website</h2>
+<p>The pages are in <code>website/pages/</code>; the shared header and footer are in <code>website/build.py</code>. To rebuild after an edit:</p>
+<pre><code>cd website
+python3 build.py</code></pre>
+<p>The finished site is in <code>website/site/</code>, which is what gets published. It uses <a href="https://tabler.io">Tabler</a>, kept in the site itself, so no page loads anything from another site.</p>
+
+<h2 id="contribute">Contributing</h2>
+<p>Reviews are especially welcome of the ticket cryptography (<code>x/tickets/crypto</code>), the control channel (<code>vpn/control</code>) and the bridge sealing (<code>vpn/bridge</code>). Please report security problems privately, as described on the <a href="security.html#report">security page</a>, not in public issues.</p>
+</article></div></div>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>Use the VPN · SmartNodes</title>
+<meta name="description" content="Connect through two hops with the SmartNodes command-line client: tickets, choosing nodes, the disguise, bridges, flags and reports.">
+<link rel="canonical" href="https://smartnodes.tech/use.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tabler.min.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="page">
+<header class="navbar navbar-expand-lg sticky-top sn-navbar">
+  <div class="container-xl">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a href="index.html" class="navbar-brand sn-brand"><svg class="sn-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="8" cy="16" r="4" fill="currentColor"/><circle cx="24" cy="8" r="4" fill="currentColor" opacity=".75"/><circle cx="24" cy="24" r="4" fill="currentColor" opacity=".5"/><path d="M11.5 14.2 20.5 9.8M11.5 17.8l9 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>SmartNodes</span></a>
+    <div class="navbar-nav flex-row order-lg-last">
+      <a class="btn btn-outline-primary btn-sm" href="https://github.com/mspvantage/smartnodes">Source code</a>
+    </div>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-link-title">Overview</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="how-it-works.html"><span class="nav-link-title">How it works</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="install.html"><span class="nav-link-title">Install</span></a></li>
+        <li class="nav-item active"><a class="nav-link" href="use.html" aria-current="page"><span class="nav-link-title">Use the VPN</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="run-a-node.html"><span class="nav-link-title">Run a node</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="build.html"><span class="nav-link-title">Build</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="tokenomics.html"><span class="nav-link-title">Token (draft)</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="security.html"><span class="nav-link-title">Security</span></a></li>
+      </ul>
+    </div>
+  </div>
+</header>
+<div class="sn-status">
+  <div class="container-xl">Early test network: unaudited, and nothing on it has real value. <a href="security.html#status">What this means</a></div>
+</div>
+<main class="page-wrapper">
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#before">Before you start</a><a href="#tickets">1. Get tickets</a><a href="#nodes">2. Choose nodes</a><a href="#connect">3. Connect</a><a href="#stop">4. Disconnect</a>
+  <a href="#blocked">If VPNs are blocked</a><a href="#bridges">Bridges</a><a href="#flag">Flag a bad node</a><a href="#files">Your files</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Use the VPN</h1>
+<p>Today the client is a command-line program for Linux, <code>smartvpn</code>. It needs root, because it creates network interfaces and a kill switch. The apps that come later will do all of this with a button.</p>
+
+<h2 id="before">Before you start</h2>
+<ul>
+  <li><a href="install.html">Install</a> the programs.</li>
+  <li>There is no public network yet. Until there is, these steps run against a test chain, such as the one on the <a href="build.html#local">build page</a>. Nothing on it has value.</li>
+</ul>
+
+<h2 id="tickets">1. Get tickets</h2>
+<p>A wallet file holds your tickets. You make it on your own machine, and it never leaves it. On the test network, buying works in three steps: your device makes blinded tickets, you pay for them on the chain, and the issuer signs them without seeing them.</p>
+<pre><code># make 12 blinded tickets under issuer key 0
+BLINDED=$(ticketctl wallet-new -out wallet.json -chain-id smartnodes -key-id 0 -count 12)
+
+# pay for them (any account can pay; it does not have to be yours)
+smartnodesd tx tickets buy-tickets 0 $BLINDED --from mykey --gas auto --gas-prices 0.025usnode
+
+# once the issuer has signed purchase N, unblind and check the signatures
+ticketctl wallet-unblind -wallet wallet.json -pubkey ISSUER_PUBLIC_KEY \
+  $(smartnodesd query tickets get-purchase N -o json | jq -r '.purchase.signatures | join(" ")')</code></pre>
+<p>The account that pays sees only that it bought some tickets. When you later spend them, nothing links the spend back to this purchase.</p>
+<div class="alert alert-info">Keep <code>wallet.json</code> private: it is readable by its owner only, and the client refuses it otherwise. Several programs can share one wallet safely; each spend locks the file first.</div>
+
+<h2 id="nodes">2. Choose nodes</h2>
+<p>Pick one entry node (tier 1) and one exit node (tier 2), run by different operators. The chain lists them with their address and public key:</p>
+<pre><code>smartnodesd query registry list-node -o json | \
+  jq -c '.node[] | {id, tier, endpoint, pubkey, operator}'</code></pre>
+<p>Nodes that failed verification are left out of what the apps will show; you can see a node's record with <code>smartnodesd query verify node-record ID</code>.</p>
+
+<h2 id="connect">3. Connect</h2>
+<pre><code>sudo smartvpn run -wallet wallet.json \
+  -entry-id 0 -entry-key ENTRY_PUBKEY -entry-endpoint 203.0.113.10:51820 \
+  -exit-id 1  -exit-key EXIT_PUBKEY   -exit-endpoint 198.51.100.20:51821</code></pre>
+<p>It pays both nodes, waits a random time before using the exit (so the payment cannot be matched to your connection), then connects and keeps the session going, paying for more time as it runs out.</p>
+<ul>
+  <li><code>-wait 10m</code> sets the longest random wait. Shorter is faster, longer is more private.</li>
+  <li><code>-credit-dir</code> is where time bought ahead at an exit is kept.</li>
+  <li>All your traffic, including name lookups, goes through the tunnel. If it drops, the kill switch stops traffic rather than letting it leak.</li>
+</ul>
+
+<h2 id="stop">4. Disconnect</h2>
+<p>Press Ctrl+C. The client tells both nodes the session is over, removes its interfaces and lifts the kill switch. If it was killed and left something behind:</p>
+<pre><code>sudo smartvpn down</code></pre>
+
+<h2 id="blocked">If VPNs are blocked where you are</h2>
+<p>By default the client uses <code>-transport auto</code>: it tries WireGuard, and if that is blocked it reaches the entry through the disguise, which looks like an ordinary visit to a well-known website. It needs <code>xray</code> installed, and the entry's disguise details from the registry:</p>
+<pre><code>sudo smartvpn run -wallet wallet.json -transport auto -entry-reality PORT/PUBLICKEY/SHORTID/SERVERNAME/UUID ...</code></pre>
+<p>Use <code>-transport reality</code> to always use the disguise, or <code>-transport wireguard</code> never to.</p>
+
+<h2 id="bridges">Bridges</h2>
+<p>If every listed node is blocked, you need a bridge: an entry node that is on no public list. Buy bridge lines <em>while you can still connect</em>, and keep them for when you cannot.</p>
+<h3>Buy a line</h3>
+<pre><code># while connected; costs one ticket
+sudo smartvpn get-bridge -wallet wallet.json \
+  -exit-id 1 -exit-key EXIT_PUBKEY -exit-endpoint 198.51.100.20:51821 \
+  -check-id 2 -check-key OTHER_PUBKEY -check-endpoint 192.0.2.30:51821</code></pre>
+<p>The request goes through your exit, so no account of yours appears on the chain. <code>-check</code> names a second node that confirms the answer, so a dishonest exit is caught. If the bridge answers with rubbish, the client proves it on the chain and is given another bridge for the same ticket. Lines are saved in <code>/var/lib/smartvpn/bridges.txt</code>.</p>
+<h3>Use a line</h3>
+<pre><code>sudo smartvpn run -wallet wallet.json -bridge @/var/lib/smartvpn/bridges.txt \
+  -exit-id 1 -exit-key EXIT_PUBKEY -exit-endpoint 198.51.100.20:51821</code></pre>
+<h3>Report a line that stopped working</h3>
+<pre><code>sudo smartvpn report-bridge -bridge 4 -exit-id 1 -exit-key EXIT_PUBKEY -exit-endpoint 198.51.100.20:51821</code></pre>
+<p>Only the device that was given a line can report it, and the report does not say who it is. Enough reports and the line stops being handed out until the bridge moves.</p>
+<div class="alert alert-warning">A bridge line is a secret: anyone who has it can find and block that bridge. Do not post it publicly.</div>
+
+<h2 id="flag">Flag a bad node</h2>
+<p>If a node gave you a bad session, flag it. It costs one ticket, which pays that node as usual, and has the node tested more often for about a day. It does not punish the node: probers decide whether it passes.</p>
+<pre><code>sudo smartvpn flag -wallet wallet.json -node 0 \
+  -exit-id 1 -exit-key EXIT_PUBKEY -exit-endpoint 198.51.100.20:51821</code></pre>
+
+<h2 id="files">Your files</h2>
+<div class="card"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td><code>wallet.json</code></td><td>Your tickets, and which are used. Never which node they paid.</td></tr>
+<tr><td><code>/var/lib/smartvpn/</code></td><td>Exit credits bought ahead, saved bridge lines, and whether WireGuard was blocked here recently (a time only).</td></tr>
+</tbody></table></div></div>
+</article></div></div>
+
+</main>
+<footer class="footer footer-transparent d-print-none">
+  <div class="container-xl">
+    <div class="row text-center align-items-center">
+      <div class="col-12 col-lg-auto mb-3 mb-lg-0">
+        SmartNodes is free, open-source software. This site sets no cookies and loads nothing from other sites.
+      </div>
+      <div class="col-lg-auto ms-lg-auto">
+        <ul class="list-inline list-inline-dots mb-0">
+          <li class="list-inline-item"><a href="https://github.com/mspvantage/smartnodes" class="link-secondary">GitHub</a></li>
+          <li class="list-inline-item"><a href="security.html#report" class="link-secondary">Report a security issue</a></li>
+          <li class="list-inline-item"><a href="tokenomics.html#notice" class="link-secondary">Token notice</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
+</div>
+<script src="assets/tabler.min.js"></script>
+</body>
+</html>

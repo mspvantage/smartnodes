@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>The SNODE token (draft) · SmartNodes</title>
+<meta name="description" content="What the SNODE token is for on the SmartNodes network: bonds, staking, tickets, fees and rewards. A draft based on test-network settings.">
+<link rel="canonical" href="https://smartnodes.tech/tokenomics.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tabler.min.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="page">
+<header class="navbar navbar-expand-lg sticky-top sn-navbar">
+  <div class="container-xl">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a href="index.html" class="navbar-brand sn-brand"><svg class="sn-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="8" cy="16" r="4" fill="currentColor"/><circle cx="24" cy="8" r="4" fill="currentColor" opacity=".75"/><circle cx="24" cy="24" r="4" fill="currentColor" opacity=".5"/><path d="M11.5 14.2 20.5 9.8M11.5 17.8l9 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>SmartNodes</span></a>
+    <div class="navbar-nav flex-row order-lg-last">
+      <a class="btn btn-outline-primary btn-sm" href="https://github.com/mspvantage/smartnodes">Source code</a>
+    </div>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-link-title">Overview</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="how-it-works.html"><span class="nav-link-title">How it works</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="install.html"><span class="nav-link-title">Install</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="use.html"><span class="nav-link-title">Use the VPN</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="run-a-node.html"><span class="nav-link-title">Run a node</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="build.html"><span class="nav-link-title">Build</span></a></li>
+        <li class="nav-item active"><a class="nav-link" href="tokenomics.html" aria-current="page"><span class="nav-link-title">Token (draft)</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="security.html"><span class="nav-link-title">Security</span></a></li>
+      </ul>
+    </div>
+  </div>
+</header>
+<div class="sn-status">
+  <div class="container-xl">Early test network: unaudited, and nothing on it has real value. <a href="security.html#status">What this means</a></div>
+</div>
+<main class="page-wrapper">
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#notice">Please read first</a><a href="#basics">The basics</a><a href="#supply">Supply</a><a href="#uses">What it is used for</a><a href="#flows">Where fees go</a><a href="#nodes">Node rewards</a><a href="#validators">Validators</a><a href="#penalties">Penalties</a><a href="#open">Not decided yet</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>The SNODE token</h1>
+
+<div class="sn-draft my-4" id="notice">
+  <b>Draft. Please read first.</b>
+  <p class="mb-2 mt-2">Everything on this page describes the settings of the SmartNodes <b>test network</b>. They are placeholders, still to be modelled, reviewed by lawyers and decided, and they may all change.</p>
+  <p class="mb-2">SNODE is not for sale, and nothing here is an offer of it, or financial, legal or investment advice. SNODE is designed to be used on the network: to bond nodes, secure the chain and pay fees. No one should expect it to make money for them. On the test network it has no value at all.</p>
+  <p class="mb-0">The final settings will be published before any network with real value starts.</p>
+</div>
+
+<h2 id="basics">The basics</h2>
+<ul>
+  <li><b>SNODE</b> is the token of the SmartNodes chain. Its smallest unit is the usnode: 1 SNODE = 1,000,000 usnode.</li>
+  <li>Users do not need SNODE to use the VPN: they hold tickets, which hide who bought them. The ticket price is set per issuer key; on the test network it is 1 SNODE per ticket.</li>
+</ul>
+
+<h2 id="supply">Supply</h2>
+<div class="row row-cards my-2">
+  <div class="col-sm-4"><div class="card card-body"><div class="text-secondary">Hard cap</div><div class="h2 mb-0">100,000,000 SNODE</div></div></div>
+  <div class="col-sm-4"><div class="card card-body"><div class="text-secondary">New issue</div><div class="h2 mb-0">2% a year, flat</div></div></div>
+  <div class="col-sm-4"><div class="card card-body"><div class="text-secondary">Starting supply</div><div class="h2 mb-0">Not decided</div></div></div>
+</div>
+<p>New SNODE is issued at a fixed 2% a year to pay validators and stakers, and stops for good at the cap. Unlike many Cosmos chains, the rate does not rise when less is staked.</p>
+
+<h2 id="uses">What it is used for</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<thead><tr><th>Use</th><th>Test-network setting</th></tr></thead>
+<tbody>
+<tr><td>Entry node bond</td><td>1,000 SNODE</td></tr>
+<tr><td>Exit node bond</td><td>5,000 SNODE</td></tr>
+<tr><td>Bridge bond</td><td>At least the entry bond</td></tr>
+<tr><td>Prober bond</td><td>1,000 SNODE</td></tr>
+<tr><td>Waiting period to get a bond back</td><td>21 days</td></tr>
+<tr><td>Staking with validators</td><td>Secures the chain and votes on its rules</td></tr>
+<tr><td>Transaction fees</td><td>0.025 usnode per unit of gas</td></tr>
+<tr><td>Buying tickets</td><td>1 SNODE per ticket on the test network</td></tr>
+</tbody></table></div></div>
+<p>Early operators can be <b>sponsored</b>: a sponsor pool lends them the bond, which stays locked and slashable, and goes back to the pool, not to the operator, when the node leaves. At most 500 nodes can be sponsored at once.</p>
+
+<h2 id="flows">Where ticket payments go</h2>
+<p>When a node redeems a ticket, the chain pays the operator the ticket's price less a <b>5% protocol fee</b>. The fee is divided:</p>
+<div class="sn-flow my-3">
+  <div class="step"><b>50%</b><span>to validators and the people staking with them</span></div>
+  <div class="step"><b>30%</b><span>to the community pool, spent only by governance vote</span></div>
+  <div class="step"><b>20%</b><span>to the prober fund, which pays for testing nodes</span></div>
+</div>
+<p>Tickets that are never spent expire with their issuer key, and their value goes to the community pool.</p>
+
+<h2 id="nodes">Node rewards</h2>
+<p>Besides ticket income, a node reward pool pays nodes for passing verification. It deliberately does not pay for ticket volume, which an operator could fake by spending tickets at their own node.</p>
+<ul>
+  <li>Each year the pool releases about 20% of what it still holds.</li>
+  <li>80% of each release goes to nodes that pass, and 20% to probers.</li>
+  <li>A node can earn at most 30% of its tier's bond in a year this way.</li>
+  <li>How often a node is tested does not change what it can earn over time.</li>
+  <li>How the pool is filled at the start is not decided. Anyone can add to it.</li>
+</ul>
+
+<h2 id="validators">Validators</h2>
+<ul>
+  <li>At most 30 validators.</li>
+  <li><b>Equal share:</b> half of validator income (fees, the stakers' share of ticket fees, and new issue) is paid equally to every validator whose operator stakes at least 5,000 SNODE of their own with it. The other half is paid by stake, as usual. This stops the largest validators growing just because they are largest.</li>
+  <li>Commission between 5% and 20%. The ceiling is fixed when a validator is created and can never be raised.</li>
+  <li>2% of staking rewards go to the community pool.</li>
+  <li><b>Non-voting stake:</b> listed accounts, such as a treasury or team holdings, still stake and earn but get no say in governance votes, so that holding tokens does not mean controlling the rules.</li>
+</ul>
+
+<h2 id="penalties">Penalties</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<thead><tr><th>Fault</th><th>Penalty (draft)</th></tr></thead>
+<tbody>
+<tr><td>Node offline or failing tests</td><td>Hidden from users until fixed. No bond lost.</td></tr>
+<tr><td>Node proven to tamper with traffic</td><td>10% of bond burned, and jailed</td></tr>
+<tr><td>Bridge proven to give a false line</td><td>10% of bond burned, and not paid</td></tr>
+<tr><td>Validator misbehaviour</td><td>The Cosmos SDK's standard slashing</td></tr>
+</tbody></table></div></div>
+<p>On the test network, node penalties are recorded but not applied.</p>
+
+<h2 id="open">Not decided yet</h2>
+<ul>
+  <li>The starting supply, and how it is divided, if at all, between operators, a community pool, the node reward pool, contributors and anyone else.</li>
+  <li>Whether any part is ever sold, which needs legal advice first.</li>
+  <li>The real values of every number on this page.</li>
+  <li>Who runs the ticket issuers, and how ticket prices are set.</li>
+</ul>
+</article></div></div>
+
+</main>
+<footer class="footer footer-transparent d-print-none">
+  <div class="container-xl">
+    <div class="row text-center align-items-center">
+      <div class="col-12 col-lg-auto mb-3 mb-lg-0">
+        SmartNodes is free, open-source software. This site sets no cookies and loads nothing from other sites.
+      </div>
+      <div class="col-lg-auto ms-lg-auto">
+        <ul class="list-inline list-inline-dots mb-0">
+          <li class="list-inline-item"><a href="https://github.com/mspvantage/smartnodes" class="link-secondary">GitHub</a></li>
+          <li class="list-inline-item"><a href="security.html#report" class="link-secondary">Report a security issue</a></li>
+          <li class="list-inline-item"><a href="tokenomics.html#notice" class="link-secondary">Token notice</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
+</div>
+<script src="assets/tabler.min.js"></script>
+</body>
+</html>

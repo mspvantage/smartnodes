@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>Security and privacy · SmartNodes</title>
+<meta name="description" content="What SmartNodes protects, what it does not, where the project stands on audits, and how to report a security problem.">
+<link rel="canonical" href="https://smartnodes.tech/security.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tabler.min.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="page">
+<header class="navbar navbar-expand-lg sticky-top sn-navbar">
+  <div class="container-xl">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a href="index.html" class="navbar-brand sn-brand"><svg class="sn-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="8" cy="16" r="4" fill="currentColor"/><circle cx="24" cy="8" r="4" fill="currentColor" opacity=".75"/><circle cx="24" cy="24" r="4" fill="currentColor" opacity=".5"/><path d="M11.5 14.2 20.5 9.8M11.5 17.8l9 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>SmartNodes</span></a>
+    <div class="navbar-nav flex-row order-lg-last">
+      <a class="btn btn-outline-primary btn-sm" href="https://github.com/mspvantage/smartnodes">Source code</a>
+    </div>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-link-title">Overview</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="how-it-works.html"><span class="nav-link-title">How it works</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="install.html"><span class="nav-link-title">Install</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="use.html"><span class="nav-link-title">Use the VPN</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="run-a-node.html"><span class="nav-link-title">Run a node</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="build.html"><span class="nav-link-title">Build</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="tokenomics.html"><span class="nav-link-title">Token (draft)</span></a></li>
+        <li class="nav-item active"><a class="nav-link" href="security.html" aria-current="page"><span class="nav-link-title">Security</span></a></li>
+      </ul>
+    </div>
+  </div>
+</header>
+<div class="sn-status">
+  <div class="container-xl">Early test network: unaudited, and nothing on it has real value. <a href="security.html#status">What this means</a></div>
+</div>
+<main class="page-wrapper">
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#status">Status</a><a href="#protects">What it protects</a><a href="#not">What it does not</a><a href="#nodes">If a node is dishonest</a><a href="#censor">Against censors</a><a href="#review">Reviews and audits</a><a href="#report">Report a problem</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Security and privacy</h1>
+
+<h2 id="status">Status</h2>
+<div class="alert alert-warning">
+  <p class="mb-2"><b>SmartNodes is an early test network.</b> Its design has not yet been reviewed by an independent cryptographer, and its code has not been audited. Do not rely on it where your safety depends on it.</p>
+  <p class="mb-0">Tickets on the test network are signed by one test key and have no value. The test network may be reset at any time.</p>
+</div>
+
+<h2 id="protects">What it is built to protect</h2>
+<ul>
+  <li><b>Who paid.</b> Tickets are blind-signed: when a node is paid, nobody can tell which purchase the ticket came from.</li>
+  <li><b>Who you are, from where you go.</b> No single node sees both your address and your destinations; the two hops are run by different operators.</li>
+  <li><b>Timing.</b> Paying the exit and using it are separated by a random wait, so the chain's record of a payment cannot be matched to when you connected.</li>
+  <li><b>That you use a VPN at all</b>, from a casual observer, when the disguise is in use: the connection looks like a visit to a well-known website.</li>
+  <li><b>Leaks.</b> A kill switch stops traffic if the tunnel drops; name lookups go through the tunnel; IPv6 is closed off rather than leaked.</li>
+  <li><b>Records.</b> Nodes keep session details in memory only and log only totals.</li>
+</ul>
+
+<h2 id="not">What it does not protect</h2>
+<ul>
+  <li><b>An entry and an exit working together</b>, or one party watching the internet near both, can match traffic going in with traffic coming out. Choose an entry and exit run by operators you have reason to think are unrelated.</li>
+  <li><b>What you reveal yourself.</b> Signing in to an account tells that website who you are, whichever node you use.</li>
+  <li><b>A compromised device.</b> Nothing on the network can help if the device itself is watched.</li>
+  <li><b>The exit's view.</b> The exit sees unencrypted traffic, as with any VPN. Use HTTPS.</li>
+  <li><b>Buying tickets</b> is a public payment from some account. Nothing links it to spending the tickets, but the account that pays is known to have bought tickets.</li>
+</ul>
+
+<h2 id="nodes">If a node is dishonest</h2>
+<ul>
+  <li>A node cannot serve without being paid, and cannot be paid twice for one ticket.</li>
+  <li>Probers chosen at random test nodes through real sessions; nodes that fail are hidden, and nodes proven to tamper lose bond.</li>
+  <li>A bridge that hands out a false line is proven wrong on the chain and loses bond.</li>
+  <li>An exit that lies about a bridge answer is caught by asking a second node.</li>
+  <li>An operator can still log what their node sees, despite the software. Two hops exist so that what any one node sees is not enough.</li>
+</ul>
+
+<h2 id="censor">Against censors</h2>
+<p>A censor can block every node on the public list. The disguise makes connections hard to recognise; bridges give entry points on no list, each costing a ticket and handed to only a few people. A well-funded censor can still buy bridge lines. Bridges are designed so that collecting them is slow and costly, that what the censor pays goes to bridge operators, and that a blocked bridge is quick to replace. No system has fully solved this.</p>
+
+<h2 id="review">Reviews and audits</h2>
+<p>Before any network carries real value, the plan is:</p>
+<ol>
+  <li>An independent cryptographer reviews the ticket scheme, threshold issuers, the bridge sealing and the planned proof that probes happened.</li>
+  <li>An independent security audit of the chain modules and the VPN code.</li>
+  <li>A public test network with outside operators and probers.</li>
+</ol>
+<p>Reports from each will be published here.</p>
+
+<h2 id="report">Report a security problem</h2>
+<p>Please report security problems privately, through GitHub's private vulnerability reporting:</p>
+<p><a class="btn btn-primary" href="https://github.com/mspvantage/smartnodes/security/advisories/new">Report a vulnerability privately</a></p>
+<p>Please do not open a public issue for a security problem. Say what you found, how to reproduce it, and what it could let someone do. You will get a reply, and credit if you would like it.</p>
+</article></div></div>
+
+</main>
+<footer class="footer footer-transparent d-print-none">
+  <div class="container-xl">
+    <div class="row text-center align-items-center">
+      <div class="col-12 col-lg-auto mb-3 mb-lg-0">
+        SmartNodes is free, open-source software. This site sets no cookies and loads nothing from other sites.
+      </div>
+      <div class="col-lg-auto ms-lg-auto">
+        <ul class="list-inline list-inline-dots mb-0">
+          <li class="list-inline-item"><a href="https://github.com/mspvantage/smartnodes" class="link-secondary">GitHub</a></li>
+          <li class="list-inline-item"><a href="security.html#report" class="link-secondary">Report a security issue</a></li>
+          <li class="list-inline-item"><a href="tokenomics.html#notice" class="link-secondary">Token notice</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
+</div>
+<script src="assets/tabler.min.js"></script>
+</body>
+</html>

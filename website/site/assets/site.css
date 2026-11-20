@@ -1,0 +1,50 @@
+/* SmartNodes' own look on top of Tabler. Dark, teal accent. */
+:root, [data-bs-theme="dark"] {
+  --tblr-primary: #2fb3a4;
+  --tblr-primary-rgb: 47, 179, 164;
+  --tblr-primary-fg: #06201d;
+  --tblr-body-bg: #0b1220;
+  --tblr-bg-surface: #111a2c;
+  --tblr-bg-surface-secondary: #0e1626;
+  --tblr-border-color: #1f2a40;
+  --tblr-link-color: #5fd0c3;
+  --tblr-link-hover-color: #8fe3d9;
+  --tblr-link-color-rgb: 95, 208, 195;
+}
+body { background: var(--tblr-body-bg); }
+.sn-navbar { background: rgba(11, 18, 32, .92); border-bottom: 1px solid var(--tblr-border-color); backdrop-filter: blur(6px); }
+.sn-brand { display: flex; align-items: center; gap: .5rem; color: var(--tblr-primary) !important; font-weight: 700; }
+.sn-brand span { color: #e6edf7; }
+.sn-status { background: #2a1f05; color: #f5d27a; font-size: .85rem; padding: .4rem 0; border-bottom: 1px solid #3d2d08; }
+.sn-status a { color: #ffe39e; text-decoration: underline; }
+.sn-hero { padding: 4.5rem 0 3.5rem; background: radial-gradient(1000px 400px at 15% -10%, rgba(47,179,164,.18), transparent 60%), radial-gradient(800px 380px at 95% 0%, rgba(80,120,255,.12), transparent 60%); border-bottom: 1px solid var(--tblr-border-color); }
+.sn-hero h1 { font-size: clamp(2rem, 4.2vw, 3.2rem); line-height: 1.12; font-weight: 750; letter-spacing: -.02em; }
+.sn-hero .lead { font-size: 1.2rem; color: #b8c3d6; max-width: 46rem; }
+.sn-eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; color: var(--tblr-primary); font-weight: 700; }
+.sn-section { padding: 3rem 0; }
+.sn-section + .sn-section { border-top: 1px solid var(--tblr-border-color); }
+.sn-icon { width: 2.5rem; height: 2.5rem; border-radius: .6rem; display: inline-flex; align-items: center; justify-content: center; background: rgba(47,179,164,.14); color: var(--tblr-primary); margin-bottom: .75rem; }
+.sn-icon svg { width: 1.4rem; height: 1.4rem; }
+.card { background: var(--tblr-bg-surface); }
+.sn-doc { max-width: 52rem; }
+.sn-doc h2 { margin-top: 2.5rem; padding-top: .5rem; }
+.sn-doc h3 { margin-top: 1.75rem; }
+.sn-doc p, .sn-doc li { line-height: 1.7; color: #cdd6e4; }
+pre { background: #070c16; border: 1px solid var(--tblr-border-color); border-radius: .5rem; padding: 1rem; color: #d5e2f2; font-size: .85rem; white-space: pre-wrap; word-break: break-word; }
+code { color: #8fe3d9; }
+pre code { color: inherit; }
+.sn-toc { position: sticky; top: 5.5rem; font-size: .9rem; }
+.sn-toc a { display: block; padding: .2rem 0; color: #9aa7bd; }
+.sn-toc a:hover { color: var(--tblr-link-hover-color); }
+.sn-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
+.sn-flow .step { border: 1px solid var(--tblr-border-color); border-radius: .6rem; padding: .9rem; background: var(--tblr-bg-surface-secondary); }
+.sn-flow .step b { display: block; color: #e6edf7; margin-bottom: .25rem; }
+.sn-flow .step span { color: #9aa7bd; font-size: .88rem; }
+.table th { color: #9aa7bd; }
+.sn-yes { color: #4fd18b; font-weight: 600; }
+.sn-no { color: #f08a7a; font-weight: 600; }
+.sn-part { color: #f5d27a; font-weight: 600; }
+.sn-draft { border: 1px solid #5a4510; background: #1f1906; color: #f5d27a; border-radius: .6rem; padding: 1rem 1.2rem; }
+.table td.sn-yes { color: #4fd18b !important; }
+.table td.sn-no { color: #f08a7a !important; }
+.table td.sn-part { color: #f5d27a !important; }

@@ -1,0 +1,110 @@
+title: Run a node
+description: How to run a SmartNodes entry, exit or bridge node, or a prober: requirements, bonds, keys, registering, the disguise and earnings.
+nav: run-a-node
+
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#kinds">Kinds of node</a><a href="#needs">What you need</a><a href="#keys">1. Keys</a><a href="#register">2. Register</a><a href="#service">3. A service key</a>
+  <a href="#start">4. Start the node</a><a href="#disguise">5. Add the disguise</a><a href="#bridge">Run a bridge</a><a href="#earn">Earnings</a><a href="#jail">Checks and jail</a><a href="#leave">Leaving</a><a href="#prober">Run a prober</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Run a node</h1>
+<p>Anyone can run a node. You post a bond, the node serves users who pay with tickets, and independent probers check that it works. On the test network the tokens have no value, so this is the time to learn it.</p>
+
+<h2 id="kinds">Kinds of node</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<thead><tr><th>Kind</th><th>What it does</th><th>Sees</th><th>Bond (draft)</th></tr></thead>
+<tbody>
+<tr><td><b>Entry</b> (tier 1)</td><td>First hop. Can offer the disguise.</td><td>Users' addresses, not where they go</td><td>1,000 SNODE</td></tr>
+<tr><td><b>Exit</b> (tier 2)</td><td>Second hop: traffic leaves to the internet from here.</td><td>Where traffic goes, not who sent it</td><td>5,000 SNODE</td></tr>
+<tr><td><b>Bridge</b></td><td>An unlisted entry, reached only through the disguise.</td><td>Like an entry</td><td>As an entry</td></tr>
+</tbody></table></div></div>
+<div class="alert alert-warning">Running an <b>exit</b> means other people's traffic leaves the internet from your address. Check your hosting provider's terms and your local law first. Running an entry or bridge carries less of this risk.</div>
+
+<h2 id="needs">What you need</h2>
+<ul>
+  <li>A Linux server with a public IPv4 address, root access, and the <a href="install.html">programs installed</a>.</li>
+  <li>Open ports: the node's port (TCP and UDP, 51820 by default), and TCP 443 if you offer the disguise.</li>
+  <li>An account on the chain with enough SNODE for the bond, plus a little for fees.</li>
+  <li>Swap turned off, and the system log kept in memory, so nothing about users could reach the disk. The node warns you if not.</li>
+</ul>
+
+<h2 id="keys">1. Make the node's key</h2>
+<pre><code>sudo mkdir -p /etc/smartnode && cd /etc/smartnode
+sudo sh -c 'umask 077; wg genkey > node.key'
+sudo wg pubkey &lt; node.key</code></pre>
+<p>The public key printed is what you register. The private key never leaves this machine.</p>
+
+<h2 id="register">2. Register on the chain</h2>
+<pre><code># an entry node: endpoint, public key, tier 1, bond
+smartnodesd tx registry register-node 203.0.113.10:51820 NODE_PUBKEY 1 1000000000usnode \
+  --from operator --gas auto --gas-prices 0.025usnode
+
+# find its id
+smartnodesd query registry list-node -o json | jq -r '.node[] | select(.endpoint=="203.0.113.10:51820") | (.id // "0")'</code></pre>
+<p>1 SNODE is 1,000,000 usnode. For an exit use tier <code>2</code> and the exit bond. The first node registered has id 0.</p>
+
+<h2 id="service">3. Give the machine a service key</h2>
+<p>Your operator key controls the bond, so it should not sit on the server. Make a separate key that can only redeem tickets, and register it. Payments still go to the operator.</p>
+<pre><code>smartnodesd keys add nodeservice           # on the server
+smartnodesd tx registry set-service-key NODE_ID SERVICE_ADDRESS --from operator ...</code></pre>
+<p>Give the service account a little SNODE for fees.</p>
+
+<h2 id="start">4. Start the node</h2>
+<pre><code>sudo smartnode -strict -key-file /etc/smartnode/node.key -node-id NODE_ID \
+  -listen 0.0.0.0:51820 -iface sn0 -subnet 10.77.0.0/24 -session 1h \
+  -from nodeservice -rpc tcp://CHAIN_RPC:26657</code></pre>
+<ul>
+  <li><code>-strict</code> refuses to start if session details could reach the disk, or if <code>-from</code> is the operator's own key.</li>
+  <li><code>-session</code> is how long one ticket buys.</li>
+  <li><code>-subnet</code> is the private range handed to users inside the tunnel. Give each node on one machine its own.</li>
+  <li>Exit nodes run a name server for their users; <code>-dns-upstream</code> picks where it forwards lookups.</li>
+</ul>
+<p>Run it under systemd so it restarts after a reboot. It logs only totals: sessions open, tickets redeemed.</p>
+
+<h2 id="disguise">5. Add the disguise (entry nodes)</h2>
+<p>Add these options to offer the disguise on port 443:</p>
+<pre><code>  -reality-port 443 -xray /usr/local/bin/xray -reality-dir /var/lib/smartnode</code></pre>
+<p>The first time, the node makes its disguise keys and prints the exact <code>set-reality</code> command to publish them. Run that command with your operator key. By default the disguise passes visitors through to www.microsoft.com; <code>-reality-cover</code> picks another site.</p>
+
+<h2 id="bridge">Run a bridge</h2>
+<p>A bridge is an entry node whose address is on no public list. The chain holds only a fingerprint of its line.</p>
+<pre><code># 1. make the line and see its fingerprint
+sudo smartnode bridge-line -key-file /etc/smartnode/node.key -listen 127.0.0.1:51830 \
+  -reality-port 443 -reality-dir /var/lib/smartnode -bridge-address 203.0.113.50
+
+# 2. register by fingerprint alone
+smartnodesd tx registry register-bridge FINGERPRINT 1000000000usnode --from operator ...
+
+# 3. run it
+sudo smartnode -strict -key-file /etc/smartnode/node.key -node-id BRIDGE_ID -listen 127.0.0.1:51830 \
+  -iface sb0 -subnet 10.79.0.0/24 -from nodeservice -rpc tcp://CHAIN_RPC:26657 \
+  -reality-port 443 -xray /usr/local/bin/xray -reality-dir /var/lib/smartnode -bridge-address 203.0.113.50</code></pre>
+<ul>
+  <li>The node's own port is closed to everything except its disguise.</li>
+  <li>It answers paid requests for its line by itself, sealed to each buyer. You are paid after a waiting period in which buyers can prove a bad answer; a proven bad answer burns part of your bond.</li>
+  <li>When the line has been given out as often as allowed, or enough of the people given it report it dead, the node logs <b>MOVE THIS BRIDGE</b>. Change the port or address, make a new line, and publish its fingerprint with <code>update-bridge</code>. The new line is handed out again.</li>
+  <li>You can also give your line privately to people you choose with <code>smartnode bridge-line ... -node-id BRIDGE_ID</code>.</li>
+</ul>
+
+<h2 id="earn">Earnings</h2>
+<ul>
+  <li><b>Tickets:</b> each redeemed ticket pays you its price, less a 5% protocol fee. The node redeems them by itself.</li>
+  <li><b>Availability:</b> passing verification earns a share of the node reward pool. Claim it whenever you like: <code>smartnodesd tx verify claim-node-reward NODE_ID --from operator ...</code></li>
+</ul>
+<p>See the <a href="tokenomics.html">token page</a> for how these are set. All figures are drafts.</p>
+
+<h2 id="jail">Checks and jail</h2>
+<p>Probers test your node at random through real sessions. If it fails several rounds in a row it is jailed: hidden from users until you fix it and run <code>smartnodesd tx verify unjail NODE_ID</code>. Being offline costs income, never bond. Only proven tampering with traffic burns bond. On the test network penalties are recorded but not applied.</p>
+
+<h2 id="leave">Leaving</h2>
+<pre><code>smartnodesd tx registry deregister-node NODE_ID --from operator ...
+# after the unbonding period (21 days, draft):
+smartnodesd tx registry withdraw-bond NODE_ID --from operator ...</code></pre>
+
+<h2 id="prober">Run a prober</h2>
+<p>Probers are paid to test nodes. A prober posts its own bond, needs a ticket wallet to pay for test sessions, and runs on a machine that is not one of your nodes.</p>
+<pre><code>smartnodesd tx verify register-prober 1000000000usnode --from prober ...
+sudo smartprobe run -from prober -home ~/.smartnodes -wallet prober-wallet.json -xray /usr/local/bin/xray</code></pre>
+<p>Each round it asks the chain which nodes it must test, tests each one through two hops in its own network space, seals its results, and reveals them the next round.</p>
+</article></div></div>

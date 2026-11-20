@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>Build and develop · SmartNodes</title>
+<meta name="description" content="Build SmartNodes from source, run the tests and a local test chain, and find your way around the code.">
+<link rel="canonical" href="https://smartnodes.tech/build.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tabler.min.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="page">
+<header class="navbar navbar-expand-lg sticky-top sn-navbar">
+  <div class="container-xl">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a href="index.html" class="navbar-brand sn-brand"><svg class="sn-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="8" cy="16" r="4" fill="currentColor"/><circle cx="24" cy="8" r="4" fill="currentColor" opacity=".75"/><circle cx="24" cy="24" r="4" fill="currentColor" opacity=".5"/><path d="M11.5 14.2 20.5 9.8M11.5 17.8l9 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>SmartNodes</span></a>
+    <div class="navbar-nav flex-row order-lg-last">
+      <a class="btn btn-outline-primary btn-sm" href="https://github.com/mspvantage/smartnodes">Source code</a>
+    </div>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-link-title">Overview</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="how-it-works.html"><span class="nav-link-title">How it works</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="install.html"><span class="nav-link-title">Install</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="use.html"><span class="nav-link-title">Use the VPN</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="run-a-node.html"><span class="nav-link-title">Run a node</span></a></li>
+        <li class="nav-item active"><a class="nav-link" href="build.html" aria-current="page"><span class="nav-link-title">Build</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="tokenomics.html"><span class="nav-link-title">Token (draft)</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="security.html"><span class="nav-link-title">Security</span></a></li>
+      </ul>
+    </div>
+  </div>
+</header>
+<div class="sn-status">
+  <div class="container-xl">Early test network: unaudited, and nothing on it has real value. <a href="security.html#status">What this means</a></div>
+</div>
+<main class="page-wrapper">
+<div class="container-xl sn-section"><div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#layout">The code</a><a href="#build">Build</a><a href="#test">Tests</a><a href="#local">A local test chain</a><a href="#trials">Live trials</a><a href="#site">This website</a><a href="#contribute">Contributing</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>Build and develop</h1>
+<p>SmartNodes is written in Go. The chain is built on the Cosmos SDK and CometBFT; the VPN uses kernel WireGuard, the Noise protocol for its control channel, and Xray for the disguise.</p>
+
+<h2 id="layout">The code</h2>
+<div class="card my-3"><div class="table-responsive"><table class="table card-table">
+<tbody>
+<tr><td><code>x/registry</code></td><td>Nodes, bonds, tiers, service keys, disguises, bridges, sponsored bonds.</td></tr>
+<tr><td><code>x/tickets</code></td><td>Issuer keys, blind-signed tickets, redemption, fees, bridge hand-out and reports.</td></tr>
+<tr><td><code>x/verify</code></td><td>Probers, random assignment, sealed reports, tallies, jail, aimed probing, customer flags, availability rewards.</td></tr>
+<tr><td><code>x/rewards</code></td><td>The equal share for validators, the commission ceiling, non-voting stake in governance.</td></tr>
+<tr><td><code>vpn/</code></td><td>The VPN itself: control channel, node, WireGuard, kill switch, name server, disguise, bridge lines, wallet, chain client, probe.</td></tr>
+<tr><td><code>cmd/</code></td><td>The five programs: <code>smartnodesd</code>, <code>smartnode</code>, <code>smartvpn</code>, <code>smartprobe</code>, <code>ticketctl</code>.</td></tr>
+<tr><td><code>proto/</code></td><td>The chain's message definitions.</td></tr>
+<tr><td><code>website/</code></td><td>This website.</td></tr>
+</tbody></table></div></div>
+
+<h2 id="build">Build</h2>
+<pre><code>git clone https://github.com/mspvantage/smartnodes.git
+cd smartnodes
+go build -o bin/ ./cmd/...</code></pre>
+<p>After changing anything in <code>proto/</code>, regenerate the Go code with <a href="https://docs.ignite.com">Ignite CLI</a> (<code>ignite cosmos generate proto-go</code>), or simply start the local chain below, which does it for you.</p>
+
+<h2 id="test">Tests</h2>
+<pre><code>go test ./x/... ./vpn/... ./cmd/...</code></pre>
+<p>The chain modules' tests check their bookkeeping after every step: for example, that the tickets module holds exactly what its records say it should.</p>
+
+<h2 id="local">A local test chain</h2>
+<pre><code>ignite cosmos chain serve --reset-once</code></pre>
+<p>This builds the chain, starts a single-machine network with test accounts <code>alice</code> and <code>bob</code>, and keeps it running. Its settings are in <code>config.yml</code>, including a short verification round so tests do not take hours. <code>--reset-once</code> starts from a clean state.</p>
+
+<h2 id="trials">Live trials</h2>
+<p>Each feature of the VPN is tried end to end on one Linux server, using network namespaces to stand in for separate machines: a device, an entry, exits, bridges, and a censor that blocks addresses. Trials need root, a fresh local chain, and Xray. They clean up after themselves.</p>
+
+<h2 id="site">This website</h2>
+<p>The pages are in <code>website/pages/</code>; the shared header and footer are in <code>website/build.py</code>. To rebuild after an edit:</p>
+<pre><code>cd website
+python3 build.py</code></pre>
+<p>The finished site is in <code>website/site/</code>, which is what gets published. It uses <a href="https://tabler.io">Tabler</a>, kept in the site itself, so no page loads anything from another site.</p>
+
+<h2 id="contribute">Contributing</h2>
+<p>Reviews are especially welcome of the ticket cryptography (<code>x/tickets/crypto</code>), the control channel (<code>vpn/control</code>) and the bridge sealing (<code>vpn/bridge</code>). Please report security problems privately, as described on the <a href="security.html#report">security page</a>, not in public issues.</p>
+</article></div></div>
+
+</main>
+<footer class="footer footer-transparent d-print-none">
+  <div class="container-xl">
+    <div class="row text-center align-items-center">
+      <div class="col-12 col-lg-auto mb-3 mb-lg-0">
+        SmartNodes is free, open-source software. This site sets no cookies and loads nothing from other sites.
+      </div>
+      <div class="col-lg-auto ms-lg-auto">
+        <ul class="list-inline list-inline-dots mb-0">
+          <li class="list-inline-item"><a href="https://github.com/mspvantage/smartnodes" class="link-secondary">GitHub</a></li>
+          <li class="list-inline-item"><a href="security.html#report" class="link-secondary">Report a security issue</a></li>
+          <li class="list-inline-item"><a href="tokenomics.html#notice" class="link-secondary">Token notice</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
+</div>
+<script src="assets/tabler.min.js"></script>
+</body>
+</html>

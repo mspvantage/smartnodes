@@ -1,0 +1,95 @@
+title: How it works
+description: Anonymous tickets, two hops, pay before serve, the REALITY disguise, bridges, independent probers and how nodes earn.
+nav: how-it-works
+
+<div class="container-xl sn-section">
+<div class="row g-5">
+<aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
+  <a href="#parts">The parts</a><a href="#tickets">Paying with tickets</a><a href="#hops">Two hops</a><a href="#paying">Pay before serve</a>
+  <a href="#disguise">The disguise</a><a href="#bridges">Bridges</a><a href="#probing">Checking nodes</a><a href="#earning">How nodes earn</a>
+  <a href="#nodisk">Nothing to log</a><a href="#chain">The chain</a>
+</nav></aside>
+<article class="col-lg-9 sn-doc">
+<h1>How it works</h1>
+<p>SmartNodes splits a VPN into parts that no single party controls: people who pay, operators who run nodes, probers who check them, and a blockchain that keeps the rules. Each part learns as little as it can about the others.</p>
+
+<h2 id="parts">The parts</h2>
+<div class="sn-flow my-3">
+  <div class="step"><b>Your device</b><span>Holds anonymous tickets and runs the client.</span></div>
+  <div class="step"><b>Entry node</b><span>Sees your address, not where you go.</span></div>
+  <div class="step"><b>Exit node</b><span>Sees where you go, not who you are.</span></div>
+  <div class="step"><b>Probers</b><span>Test nodes at random through real sessions.</span></div>
+  <div class="step"><b>The chain</b><span>Registers nodes, pays them, keeps the rules.</span></div>
+</div>
+<p>The chain is its own network, SmartNodes, built with the Cosmos SDK. Its token, SNODE, is used for node bonds, staking and fees; see <a href="tokenomics.html">the token page</a>.</p>
+
+<h2 id="tickets">Paying with tickets</h2>
+<p>You buy a batch of tickets in one purchase. Before the issuers sign them, your device <em>blinds</em> them: it hides each ticket behind a random factor, so the issuers sign without seeing what they sign. Your device then removes the factor and has a valid ticket that nobody has ever seen.</p>
+<p>When you connect, you hand a node a ticket made out to that node. The node shows it to the chain to be paid. The chain checks the issuers' signature and that the ticket was not spent before, but it cannot link the ticket to the purchase: the purchase is public, the spend is public, and nothing connects them. One ticket buys one session of a set length.</p>
+<ul>
+  <li>Each ticket can be spent once, at one named node, and the chain refuses a second spend.</li>
+  <li>The chain never pays out more tickets than it saw issued, which caps the damage if an issuer key were ever misused.</li>
+  <li>Unspent tickets expire with their issuer key; their value goes to the community pool, not to anyone's pocket.</li>
+</ul>
+<p class="text-secondary">Today one issuer key signs tickets on the test network. Before real value is involved, signing will be split between several independent issuers, so that no single key can create tickets. That design is with the cryptographer.</p>
+
+<h2 id="hops">Two hops</h2>
+<p>Your traffic goes through an entry node and then an exit node, run by different operators. The connection to the exit runs inside the connection to the entry, so:</p>
+<ul>
+  <li>the entry node sees your address and that you use SmartNodes, but only encrypted traffic to an exit;</li>
+  <li>the exit node sees the websites you visit, but only the entry node's address, never yours;</li>
+  <li>name lookups go to the exit's own resolver, through the tunnel, never to your local network.</li>
+</ul>
+<p>The client keeps a kill switch: if the tunnel drops, your traffic stops rather than leaking outside it.</p>
+
+<h2 id="paying">Pay before serve</h2>
+<p>A node checks with the chain that a ticket is genuine and unspent before it serves you, so nobody can use a node for free. The exit is paid ahead, and the client waits a random time between paying it and first using it, so that the chain's record of the payment cannot be lined up with the moment you connected.</p>
+
+<h2 id="disguise">The disguise</h2>
+<p>WireGuard, which carries the tunnel, is fast but easy to recognise, and some countries block it. Entry nodes can also offer a disguise built on Xray REALITY. To anyone watching, your device makes an ordinary encrypted visit to a well-known website, by default www.microsoft.com. A censor that connects to the node itself is passed through to that real site and sees its real certificate.</p>
+<p>The client tries WireGuard first and switches to the disguise by itself when WireGuard is blocked, then remembers for a day that it is blocked where you are.</p>
+
+<h2 id="bridges">Bridges</h2>
+<p>A disguise hides <em>what</em> the traffic is, but listed entry nodes' addresses are public on the chain, so a determined censor can block all of them. Bridges are entry nodes on no public list: the chain stores only a fingerprint of each bridge's details, never its address.</p>
+<ol>
+  <li><b>Handed out for a ticket.</b> A device spends one ticket, through its exit node, for one bridge line. The chain picks a bridge at random; the bridge answers with its line sealed to a one-time key only that device holds. Each line goes to a limited number of people, so a censor must pay for every line it collects, and its payments go to bridge operators.</li>
+  <li><b>Checked twice.</b> The device asks a second node, not just the exit it bought through, for the same answer, and checks the line against the fingerprint the bridge committed to.</li>
+  <li><b>Rubbish is punished.</b> A bridge is paid only after a waiting period. If its answer does not match its fingerprint, the device proves it on the chain: part of the bridge's bond is burned, it is not paid, and another bridge is asked.</li>
+  <li><b>Dead lines are replaced.</b> A device whose line stops working reports it, proving it was given the line without saying who it is. Once enough of the people given a line report it, the line stops being handed out, and the operator moves the bridge to a new address or port. Nobody already using it is cut off.</li>
+</ol>
+<p>Bridges are never tested by public probers, because probing would reveal their addresses to anyone who signs up as a prober. They are checked by their own users instead.</p>
+
+<h2 id="probing">Checking nodes</h2>
+<p>Probers are independent, bonded participants who test nodes the way a user would: they pay with real tickets, connect through two hops, measure speed and check that traffic arrives untouched. Each round, the chain assigns probers to nodes at random, from a seed nobody can steer, so operators cannot choose who tests them.</p>
+<ul>
+  <li>Probers seal their results first and reveal them a round later, so none can copy another.</li>
+  <li>A node that fails several rounds in a row is jailed: hidden from users until its operator fixes it. Being down costs income, never bond.</li>
+  <li>A node that every assigned prober catches tampering with traffic loses part of its bond.</li>
+  <li>On the test network these penalties are switched off: results are recorded, but nobody is jailed or loses bond until the rules have been tried in public.</li>
+  <li>Probing is aimed: new nodes, failing nodes and nodes just back from jail are tested more often; nodes with a long clean record less often, but never not at all.</li>
+  <li>A customer who had a bad session can flag the node, spending one ticket made out to it. A flag is not a verdict: it only makes probers look more often for a while. The ticket pays the node as usual, so flagging a rival costs you money and earns them some.</li>
+</ul>
+<p>How often a node is probed does not change what it earns over time: each pass is worth less when a node is probed more, so neither flags nor aiming can be used to hurt an honest node.</p>
+
+<h2 id="earning">How nodes earn</h2>
+<ul>
+  <li><b>Tickets.</b> Every ticket a node redeems pays its operator the ticket price, less a 5% protocol fee.</li>
+  <li><b>Availability.</b> A reward pool pays nodes for passing verification, never for ticket volume, because volume could be faked by an operator spending tickets at their own node.</li>
+  <li><b>Bridges</b> earn from the tickets that buy their lines.</li>
+</ul>
+<p>Every node posts a bond, which it gets back when it leaves after a waiting period. Early operators can be sponsored: a bond lent from a sponsor pool, which returns to the pool when the node leaves.</p>
+
+<h2 id="nodisk">Nothing to log</h2>
+<p>The node software keeps session details in memory only. It locks its memory against being swapped to disk, warns if swap or the system log could record anything, and in strict mode refuses to start at all. It logs only totals: sessions open, tickets redeemed. It also refuses to run with the operator's main key in strict mode; a separate service key, which can only redeem tickets, does that job.</p>
+
+<h2 id="chain">The chain</h2>
+<p>The chain is a sovereign Cosmos SDK network with its own validators. Some of its rules are designed against problems seen on other networks:</p>
+<ul>
+  <li>Half of validator income is paid equally to every validator, so the largest do not keep growing simply by being largest.</li>
+  <li>Validator commission is capped at 20%.</li>
+  <li>Stake held by listed accounts, such as a treasury, can be barred from governance votes, so that holding tokens does not mean controlling the rules.</li>
+  <li>Every chain process that runs on its own copes with a failure by recording it and carrying on, rather than halting the chain.</li>
+</ul>
+</article>
+</div>
+</div>
