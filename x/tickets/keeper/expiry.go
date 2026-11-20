@@ -25,6 +25,9 @@ func (k Keeper) EndBlocker(ctx context.Context) error {
 	if err := k.SweepExpiredKeys(ctx); err != nil {
 		return err
 	}
+	if err := k.ProcessBridgeDue(ctx); err != nil {
+		return err
+	}
 	return k.ClearSpent(ctx)
 }
 

@@ -15,4 +15,12 @@ message Params {
   uint64 max_batch = 2;
   uint64 fee_bps = 3;
   uint64 retention_blocks = 4;
+  // bridge_answer_blocks is how long a bridge has to answer a request
+  // before it passes to another.
+  uint64 bridge_answer_blocks = 5;
+  // bridge_tries is how many bridges are asked before a request lapses.
+  uint64 bridge_tries = 6;
+  // bridge_handout_limit is how many people one bridge line is given to
+  // before the bridge is no longer handed out, until it moves.
+  uint64 bridge_handout_limit = 7;
 }

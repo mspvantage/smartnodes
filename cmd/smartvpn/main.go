@@ -72,6 +72,8 @@ func main() {
 		err = connect(os.Args[2:])
 	case "run":
 		err = runCmd(os.Args[2:])
+	case "get-bridge":
+		err = getBridge(os.Args[2:])
 	case "prepay":
 		err = prepay(os.Args[2:])
 	case "up":
@@ -93,6 +95,7 @@ func usage() {
                    -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-credit-dir DIR] [-wait 10m]
   smartvpn connect -entry-id N -entry-key KEY -entry-endpoint HOST:PORT -entry-ticket T -key-id K
                    (-exit-id N -exit-key KEY -exit-endpoint HOST:PORT -exit-ticket T [-wait 10m] | -exit-credit FILE)
+  smartvpn get-bridge -wallet FILE -exit-id N -exit-key KEY -exit-endpoint HOST:PORT [-out FILE]
   smartvpn prepay  -exit-id N -exit-key KEY -exit-endpoint HOST:PORT -key-id K -ticket T -out FILE
   smartvpn up      -node-id N -node-key KEY -endpoint HOST:PORT -key-id K -ticket T
   smartvpn down
@@ -241,7 +244,7 @@ func addTransportFlags(fs *flag.FlagSet, def string) *transportOpts {
 	fs.StringVar(&o.transport, "transport", def, "how to reach the entry node: wireguard, reality (disguised), or auto (WireGuard, then the disguise if it is blocked)")
 	fs.StringVar(&o.reality, "entry-reality", "", "the entry node's disguise from the registry, as PORT/PUBLICKEY/SHORTID/SERVERNAME/UUID")
 	fs.StringVar(&o.xray, "xray", "xray", "path to the Xray program, for the disguise")
-	fs.StringVar(&o.bridge, "bridge", "", "a bridge line from a bridge's operator, used as the entry in place of the -entry flags")
+	fs.StringVar(&o.bridge, "bridge", "", "a bridge line, or @FILE for one of the lines saved in FILE, used as the entry in place of the -entry flags")
 	return o
 }
 
@@ -249,7 +252,11 @@ func newClient(chainID string, keyID, entryID uint64, entryKey, entryEndpoint st
 	pay func(uint64) (string, error), creditPath string, wait time.Duration, t *transportOpts) (*client, error) {
 	var line *bridge.Line
 	if t.bridge != "" {
-		l, err := bridge.Parse(t.bridge)
+		text, err := readBridge(t.bridge)
+		if err != nil {
+			return nil, err
+		}
+		l, err := bridge.Parse(text)
 		if err != nil {
 			return nil, err
 		}

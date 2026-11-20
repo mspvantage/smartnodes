@@ -26,4 +26,6 @@ var (
 	ErrNodeNotActive     = errors.Register(ModuleName, 1115, "node is not active")
 	ErrOverRedemption    = errors.Register(ModuleName, 1116, "more tickets redeemed than were issued under this key")
 	ErrInvalidGenesis    = errors.Register(ModuleName, 1117, "invalid genesis state")
+	ErrNoBridges         = errors.Register(ModuleName, 1118, "no bridge can take a request now")
+	ErrBridgeRequest     = errors.Register(ModuleName, 1119, "invalid bridge request")
 )

@@ -123,6 +123,9 @@ func TestBadHellos(t *testing.T) {
 	cases := map[string]Hello{
 		"prepay without tickets": {KeyID: 1, WGPubkey: good.WGPubkey, Prepay: true},
 		"close with tickets":     {KeyID: 1, WGPubkey: good.WGPubkey, Close: true, Tickets: good.Tickets},
+		"unknown op":             {KeyID: 1, Op: "steal"},
+		"bridge request, no key": {KeyID: 1, Op: OpBridgeRequest, Tickets: good.Tickets},
+		"bridge answer, ticket":  {KeyID: 1, Op: OpBridgeAnswer, RequestKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Tickets: good.Tickets},
 		"too many":               many,
 		"bad wg key":             {KeyID: 1, Tickets: good.Tickets, WGPubkey: "AAAA"},
 		"wg key not b64":         {KeyID: 1, Tickets: good.Tickets, WGPubkey: "!!"},

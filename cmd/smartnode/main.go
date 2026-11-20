@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mspvantage/smartnodes/vpn/bridge"
 	"github.com/mspvantage/smartnodes/vpn/chain"
 	"github.com/mspvantage/smartnodes/vpn/control"
 	"github.com/mspvantage/smartnodes/vpn/dns"
@@ -127,6 +128,7 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 	if err != nil {
 		return fmt.Errorf("reading node %d from the registry: %w", nodeID, err)
 	}
+	var myLine *bridge.Line
 	if ro.bridge != "" {
 		// A bridge is checked by its line's fingerprint instead.
 		if ro.port == 0 {
@@ -148,6 +150,7 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 			return err
 		}
 		log.Printf("bridge %d: its line matches the chain; the line is in %s, to give only to people you choose", nodeID, path)
+		myLine = &line
 	} else if info.Commitment != "" {
 		return fmt.Errorf("node %d is a bridge; run with -bridge-address and -reality-port", nodeID)
 	} else if info.Pubkey != pub {
@@ -209,6 +212,8 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 	n, err := node.New(node.Config{
 		ChainID: chainID, NodeID: nodeID, Subnet: prefix, SessionLength: session,
 		RedeemMargin: time.Hour, MaxBatch: 100, Gather: gather, DNS: gateway,
+		// Clients may ask for bridge lines through any node.
+		Bridges: cli,
 	}, cli, wg.Interface{Name: iface, Run: wg.Exec{}})
 	if err != nil {
 		return err
@@ -281,6 +286,11 @@ func run(keyFile string, nodeID uint64, chainID, listen, iface, subnet string, s
 		if err := startReality(stop, ro, listenAddr, info, nodeID); err != nil {
 			return fmt.Errorf("disguise: %w", err)
 		}
+	}
+
+	if myLine != nil {
+		go answerBridgeRequests(stop, cli, *myLine)
+		log.Printf("bridge %d: answering paid requests for its line", nodeID)
 	}
 
 	log.Printf("node %d (%s) serving on %s; public key %s; one ticket buys %s", nodeID, roleName(role), listenAddr, pub, session)

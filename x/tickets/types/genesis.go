@@ -21,6 +21,9 @@ const TicketKeySize = 32
 // Validate performs basic genesis state validation returning an error upon any
 // failure.
 func (gs GenesisState) Validate() error {
+	if err := validateBridgeGenesis(gs); err != nil {
+		return err
+	}
 	issuerKeyIdMap := make(map[uint64]bool)
 	issuerKeyCount := gs.GetIssuerKeyCount()
 	for _, elem := range gs.IssuerKeyList {
@@ -88,4 +91,27 @@ func (gs GenesisState) Validate() error {
 	}
 
 	return gs.Params.Validate()
+}
+
+// validateBridgeGenesis checks bridge requests: unique ids below the count,
+// unique keys, a known state, and a payment.
+func validateBridgeGenesis(gs GenesisState) error {
+	ids := map[uint64]bool{}
+	keys := map[string]bool{}
+	for _, r := range gs.BridgeRequests {
+		if ids[r.Id] || r.Id >= gs.BridgeRequestCount {
+			return fmt.Errorf("bridge request %d: duplicated or above the count", r.Id)
+		}
+		if keys[r.RequestKey] || r.RequestKey == "" {
+			return fmt.Errorf("bridge request %d: missing or duplicated key", r.Id)
+		}
+		if r.State < BridgeOpen || r.State > BridgeLapsed {
+			return fmt.Errorf("bridge request %d: unknown state %d", r.Id, r.State)
+		}
+		if err := r.Amount.Validate(); err != nil {
+			return fmt.Errorf("bridge request %d: %w", r.Id, err)
+		}
+		ids[r.Id], keys[r.RequestKey] = true, true
+	}
+	return nil
 }

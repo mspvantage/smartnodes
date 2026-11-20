@@ -197,6 +197,7 @@ func (k Keeper) PayFromProberFund(ctx context.Context, recipient sdk.AccAddress,
 //	payments locked in unfulfilled purchases
 //	+ the value of tickets issued and not yet redeemed, for keys not yet swept
 //	+ the prober fund
+//	+ payments held for open bridge requests
 //
 // The module account balance must equal this at all times. Tests check it
 // after every operation.
@@ -232,6 +233,16 @@ func (k Keeper) EscrowExpected(ctx context.Context) (sdk.Coins, error) {
 	err = k.ProberFund.Walk(ctx, nil, func(denom string, amount sdkmath.Int) (bool, error) {
 		if amount.IsPositive() {
 			total = total.Add(sdk.NewCoin(denom, amount))
+		}
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = k.BridgeRequest.Walk(ctx, nil, func(_ uint64, r types.BridgeRequest) (bool, error) {
+		if r.State == types.BridgeOpen && r.Amount.IsPositive() {
+			total = total.Add(r.Amount)
 		}
 		return false, nil
 	})

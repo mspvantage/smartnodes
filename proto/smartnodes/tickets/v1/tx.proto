@@ -30,6 +30,14 @@ service Msg {
 
   // RedeemTickets defines the RedeemTickets RPC.
   rpc RedeemTickets(MsgRedeemTickets) returns (MsgRedeemTicketsResponse);
+
+  // RequestBridge spends a ticket made out to the bridge pool for one
+  // bridge line, sealed to request_key. Nodes send it for their clients, so
+  // no client account appears on the chain.
+  rpc RequestBridge(MsgRequestBridge) returns (MsgRequestBridgeResponse);
+
+  // AnswerBridge is a bridge's sealed answer to a request assigned to it.
+  rpc AnswerBridge(MsgAnswerBridge) returns (MsgAnswerBridgeResponse);
 }
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {
@@ -102,3 +110,30 @@ message MsgRedeemTickets {
 
 // MsgRedeemTicketsResponse defines the MsgRedeemTicketsResponse message.
 message MsgRedeemTicketsResponse {}
+
+// MsgRequestBridge defines the MsgRequestBridge message.
+message MsgRequestBridge {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "smartnodes/x/tickets/MsgRequestBridge";
+  string signer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 key_id = 2;
+  string ticket = 3;
+  string request_key = 4;
+}
+
+// MsgRequestBridgeResponse defines the MsgRequestBridgeResponse message.
+message MsgRequestBridgeResponse {
+  uint64 id = 1;
+}
+
+// MsgAnswerBridge defines the MsgAnswerBridge message.
+message MsgAnswerBridge {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "smartnodes/x/tickets/MsgAnswerBridge";
+  string signer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 request_id = 2;
+  string sealed = 3;
+}
+
+// MsgAnswerBridgeResponse defines the MsgAnswerBridgeResponse message.
+message MsgAnswerBridgeResponse {}

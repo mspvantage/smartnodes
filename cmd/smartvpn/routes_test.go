@@ -188,3 +188,33 @@ func TestBlockedMemory(t *testing.T) {
 		t.Fatal("not forgotten")
 	}
 }
+
+func TestReadBridge(t *testing.T) {
+	if got, err := readBridge("smartnodes-bridge:x"); err != nil || got != "smartnodes-bridge:x" {
+		t.Fatalf("%q %v", got, err)
+	}
+	path := filepath.Join(t.TempDir(), "bridges.txt")
+	if err := appendLine(path, "line-a"); err != nil {
+		t.Fatal(err)
+	}
+	_ = appendLine(path, "line-b")
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v", fi.Mode())
+	}
+	seen := map[string]bool{}
+	for i := 0; i < 50; i++ {
+		got, err := readBridge("@" + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen[got] = true
+	}
+	if !seen["line-a"] || !seen["line-b"] || len(seen) != 2 {
+		t.Fatalf("picked %v", seen)
+	}
+	empty := filepath.Join(t.TempDir(), "none.txt")
+	_ = os.WriteFile(empty, []byte("# nothing\n"), 0o600)
+	if _, err := readBridge("@" + empty); err == nil {
+		t.Fatal("an empty file gave a line")
+	}
+}

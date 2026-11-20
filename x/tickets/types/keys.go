@@ -47,4 +47,12 @@ var (
 	// ClearingKey prefixes the set of issuer keys whose spent-ticket records
 	// are being deleted, a bounded number per block.
 	ClearingKey = collections.NewPrefix("clearing/")
+	// Bridge requests: the requests, their count, an index by one-time key,
+	// the queue of deadlines and deletions, and how often each bridge's
+	// current line has been handed out.
+	BridgeRequestKey      = collections.NewPrefix("bridgereq/value/")
+	BridgeRequestCountKey = collections.NewPrefix("bridgereq/count/")
+	BridgeRequestByKeyKey = collections.NewPrefix("bridgereq/bykey/")
+	BridgeDueKey          = collections.NewPrefix("bridgereq/due/")
+	BridgeHandoutsKey     = collections.NewPrefix("bridgehandouts/")
 )

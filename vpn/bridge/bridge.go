@@ -27,6 +27,10 @@ import (
 	"github.com/mspvantage/smartnodes/vpn/disguise"
 )
 
+// PoolID is the node id a ticket names when it pays for a bridge line, as
+// the chain defines it.
+const PoolID uint64 = 1<<64 - 1
+
 const (
 	prefix = "smartnodes-bridge:"
 	domain = "SMARTNODES-BRIDGE-V1\n"

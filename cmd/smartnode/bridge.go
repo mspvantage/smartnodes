@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mspvantage/smartnodes/vpn/bridge"
+	"github.com/mspvantage/smartnodes/vpn/chain"
 	"github.com/mspvantage/smartnodes/vpn/control"
 	"github.com/mspvantage/smartnodes/vpn/disguise"
 )
@@ -90,4 +94,52 @@ func bridgeLineCmd(args []string) error {
 	fmt.Printf("%s\n", l)
 	fmt.Fprintf(os.Stderr, "saved in %s (readable by its owner only); give it only to people you choose: anyone with it can find this bridge\n", filepath.Clean(path))
 	return nil
+}
+
+// answerBridgeRequests answers, every few seconds, the paid requests the
+// chain has assigned to this bridge: its line, sealed to each requester's
+// one-time key. Only totals are logged.
+func answerBridgeRequests(ctx context.Context, cli *chain.CLI, line bridge.Line) {
+	answered := map[uint64]bool{}
+	total := 0
+	tick := time.NewTicker(10 * time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		qctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		reqs, err := cli.BridgeRequestsFor(qctx, line.NodeID)
+		cancel()
+		if err != nil {
+			continue
+		}
+		for _, r := range reqs {
+			if answered[r.ID] {
+				continue
+			}
+			key, err := bridge.UnB64(r.RequestKey)
+			if err != nil {
+				answered[r.ID] = true
+				continue
+			}
+			sealed, err := bridge.Seal(key, line.String())
+			if err != nil {
+				answered[r.ID] = true
+				continue
+			}
+			actx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+			err = cli.AnswerBridge(actx, r.ID, bridge.B64(sealed))
+			cancel()
+			if err != nil {
+				log.Printf("could not answer a bridge request: %v", err)
+				continue
+			}
+			answered[r.ID] = true
+			total++
+			log.Printf("bridge requests answered: %d", total)
+		}
+	}
 }

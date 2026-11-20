@@ -5,6 +5,7 @@ package smartnodes.tickets.v1;
 import "amino/amino.proto";
 import "cosmos/base/v1beta1/coin.proto";
 import "gogoproto/gogo.proto";
+import "smartnodes/tickets/v1/bridge_request.proto";
 import "smartnodes/tickets/v1/issuer_key.proto";
 import "smartnodes/tickets/v1/params.proto";
 import "smartnodes/tickets/v1/purchase.proto";
@@ -35,6 +36,12 @@ message GenesisState {
   // swept_key_ids lists issuer keys whose unspent value has already been
   // moved to the community pool.
   repeated uint64 swept_key_ids = 8;
+
+  // bridge_requests are requests for bridge lines not yet deleted; open
+  // ones hold their payment.
+  repeated BridgeRequest bridge_requests = 9 [(gogoproto.nullable) = false];
+  uint64 bridge_request_count = 10;
+  repeated BridgeHandouts bridge_handouts = 11 [(gogoproto.nullable) = false];
 }
 
 // SpentTicket records one redeemed ticket.

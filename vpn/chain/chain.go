@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mspvantage/smartnodes/vpn/disguise"
@@ -57,6 +58,10 @@ type CLI struct {
 	// PollInterval and PollTimeout control waiting for a transaction.
 	PollInterval time.Duration
 	PollTimeout  time.Duration
+
+	// txMu keeps this key's transactions one at a time, so two never take
+	// the same account sequence.
+	txMu sync.Mutex
 }
 
 var _ node.Chain = (*CLI)(nil)
@@ -284,6 +289,8 @@ func (c *CLI) Redeem(ctx context.Context, keyID uint64, tickets [][]byte) error 
 	if len(tickets) == 0 {
 		return nil
 	}
+	c.txMu.Lock()
+	defer c.txMu.Unlock()
 	args := []string{"tx", "tickets", "redeem-tickets", strconv.FormatUint(c.NodeID, 10), strconv.FormatUint(keyID, 10)}
 	for _, t := range tickets {
 		args = append(args, base64.StdEncoding.EncodeToString(t))
@@ -318,6 +325,8 @@ func (c *CLI) Redeem(ctx context.Context, keyID uint64, tickets [][]byte) error 
 // is in a block. args are the command after "tx", such as
 // "verify", "reveal-report", "3", ...
 func (c *CLI) Send(ctx context.Context, args ...string) error {
+	c.txMu.Lock()
+	defer c.txMu.Unlock()
 	full := append([]string{"tx"}, args...)
 	full = append(full,
 		"--from", c.From, "--keyring-backend", c.KeyringBackend, "--home", c.Home,

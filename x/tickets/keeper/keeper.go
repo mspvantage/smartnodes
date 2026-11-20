@@ -47,6 +47,13 @@ type Keeper struct {
 	// Clearing holds issuer keys whose spent-ticket records are being deleted.
 	Clearing collections.KeySet[uint64]
 
+	// Bridge hand-out: see bridges.go.
+	BridgeRequestSeq   collections.Sequence
+	BridgeRequest      collections.Map[uint64, types.BridgeRequest]
+	BridgeRequestByKey collections.Map[string, uint64]
+	BridgeDue          collections.KeySet[collections.Pair[int64, uint64]]
+	BridgeHandouts     collections.Map[uint64, types.BridgeHandouts]
+
 	distrKeeper types.DistrKeeper
 }
 
@@ -85,7 +92,13 @@ func NewKeeper(
 		KeyExpiry:      collections.NewKeySet(sb, types.KeyExpiryKey, "keyExpiry", collections.PairKeyCodec(collections.Int64Key, collections.Uint64Key)),
 		SweptKeys:      collections.NewKeySet(sb, types.SweptKey, "sweptKeys", collections.Uint64Key),
 		Clearing:       collections.NewKeySet(sb, types.ClearingKey, "clearing", collections.Uint64Key),
-		distrKeeper:    distrKeeper,
+
+		BridgeRequestSeq:   collections.NewSequence(sb, types.BridgeRequestCountKey, "bridgeRequestSequence"),
+		BridgeRequest:      collections.NewMap(sb, types.BridgeRequestKey, "bridgeRequest", collections.Uint64Key, codec.CollValue[types.BridgeRequest](cdc)),
+		BridgeRequestByKey: collections.NewMap(sb, types.BridgeRequestByKeyKey, "bridgeRequestByKey", collections.StringKey, collections.Uint64Value),
+		BridgeDue:          collections.NewKeySet(sb, types.BridgeDueKey, "bridgeDue", collections.PairKeyCodec(collections.Int64Key, collections.Uint64Key)),
+		BridgeHandouts:     collections.NewMap(sb, types.BridgeHandoutsKey, "bridgeHandouts", collections.Uint64Key, codec.CollValue[types.BridgeHandouts](cdc)),
+		distrKeeper:        distrKeeper,
 	}
 	schema, err := sb.Build()
 	if err != nil {

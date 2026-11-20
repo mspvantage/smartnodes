@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"sort"
 	"testing"
 	"time"
 
@@ -106,6 +107,20 @@ func (m *mockDistr) FundCommunityPool(_ context.Context, amount sdk.Coins, sende
 // mockRegistry is an in-memory node registry.
 type mockRegistry struct {
 	nodes map[uint64]registrytypes.Node
+}
+
+func (m *mockRegistry) WalkNodes(_ context.Context, fn func(registrytypes.Node) (bool, error)) error {
+	ids := make([]uint64, 0, len(m.nodes))
+	for id := range m.nodes {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	for _, id := range ids {
+		if stop, err := fn(m.nodes[id]); err != nil || stop {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *mockRegistry) GetNode(_ context.Context, id uint64) (registrytypes.Node, error) {

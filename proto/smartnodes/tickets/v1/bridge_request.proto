@@ -1,0 +1,41 @@
+syntax = "proto3";
+package smartnodes.tickets.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mspvantage/smartnodes/x/tickets/types";
+
+// BridgeRequest is a paid request for one bridge line. The ticket that paid
+// for it was made out to the bridge pool; the line comes back sealed to the
+// requester's one-time key, so the chain never holds it in the clear.
+message BridgeRequest {
+  uint64 id = 1;
+  // request_key is the requester's one-time X25519 public key, base64.
+  string request_key = 2;
+  // amount is the ticket's price, held until a bridge answers.
+  cosmos.base.v1beta1.Coin amount = 3 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+  // bridge_id is the bridge asked to answer now.
+  uint64 bridge_id = 4;
+  // deadline is the block height by which it must answer, or the request
+  // passes to another bridge.
+  int64 deadline = 5;
+  // tried lists bridges already asked, so none is asked twice.
+  repeated uint64 tried = 6;
+  // sealed is the bridge's answer, base64, once given.
+  string sealed = 7;
+  // state is 1 while open, 2 once answered, 3 if no bridge answered.
+  uint32 state = 8;
+}
+
+// BridgeHandouts counts how many people a bridge's current line was given
+// to. A bridge that moves gets a new fingerprint and starts again.
+message BridgeHandouts {
+  uint64 bridge_id = 1;
+  string commitment = 2;
+  uint64 count = 3;
+}

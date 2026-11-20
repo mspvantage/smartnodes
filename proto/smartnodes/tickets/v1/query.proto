@@ -6,6 +6,7 @@ import "amino/amino.proto";
 import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
+import "smartnodes/tickets/v1/bridge_request.proto";
 import "smartnodes/tickets/v1/issuer_key.proto";
 import "smartnodes/tickets/v1/params.proto";
 import "smartnodes/tickets/v1/purchase.proto";
@@ -41,6 +42,14 @@ service Query {
 
   // TicketSpent reports whether a ticket has been redeemed. Nodes ask before
   // serving, so a ticket that was already used elsewhere is refused at once.
+  // BridgeRequestByKey finds a bridge request by its one-time key.
+  rpc BridgeRequestByKey(QueryBridgeRequestByKeyRequest) returns (QueryBridgeRequestByKeyResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/bridge_request_by_key/{request_key}";
+  }
+  // BridgeRequestsFor lists the open requests a bridge must answer.
+  rpc BridgeRequestsFor(QueryBridgeRequestsForRequest) returns (QueryBridgeRequestsForResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/bridge_requests_for/{bridge_id}";
+  }
   rpc TicketSpent(QueryTicketSpentRequest) returns (QueryTicketSpentResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/tickets/v1/ticket_spent/{key_id}/{ticket_key}";
   }
@@ -110,4 +119,24 @@ message QueryTicketSpentRequest {
 // QueryTicketSpentResponse defines the QueryTicketSpentResponse message.
 message QueryTicketSpentResponse {
   bool spent = 1;
+}
+
+// QueryBridgeRequestByKeyRequest defines the QueryBridgeRequestByKeyRequest message.
+message QueryBridgeRequestByKeyRequest {
+  string request_key = 1;
+}
+
+// QueryBridgeRequestByKeyResponse defines the QueryBridgeRequestByKeyResponse message.
+message QueryBridgeRequestByKeyResponse {
+  BridgeRequest request = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryBridgeRequestsForRequest defines the QueryBridgeRequestsForRequest message.
+message QueryBridgeRequestsForRequest {
+  uint64 bridge_id = 1;
+}
+
+// QueryBridgeRequestsForResponse defines the QueryBridgeRequestsForResponse message.
+message QueryBridgeRequestsForResponse {
+  repeated BridgeRequest requests = 1 [(gogoproto.nullable) = false];
 }

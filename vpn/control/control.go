@@ -85,7 +85,28 @@ type Hello struct {
 	// Close ends the session for WGPubkey now, so the node can give its
 	// place to someone else. It carries no tickets.
 	Close bool `json:"close,omitempty"`
+
+	// Op asks for a bridge-line service instead of a session; see the Op
+	// constants. It carries no WireGuard key.
+	Op string `json:"op,omitempty"`
+	// RequestKey is the device's one-time key for a bridge request, base64.
+	RequestKey string `json:"request_key,omitempty"`
+	// NodeID names the bridge whose fingerprint is asked for.
+	NodeID uint64 `json:"node_id,omitempty"`
 }
+
+// Bridge-line services a node offers its clients, so that a device never
+// needs to reach the chain itself, and no account of the device's ever
+// appears on it.
+const (
+	// OpBridgeRequest spends one ticket made out to the bridge pool for one
+	// bridge line, sealed to RequestKey. The node sends it to the chain.
+	OpBridgeRequest = "bridge-request"
+	// OpBridgeAnswer collects the sealed answer for RequestKey.
+	OpBridgeAnswer = "bridge-answer"
+	// OpBridgeFingerprint reads bridge NodeID's fingerprint from the chain.
+	OpBridgeFingerprint = "bridge-fingerprint"
+)
 
 // Reply is what the node answers.
 type Reply struct {
@@ -98,6 +119,13 @@ type Reply struct {
 	Expires int64 `json:"expires,omitempty"`
 	// DNS is a name server to use inside the tunnel, if the node runs one.
 	DNS string `json:"dns,omitempty"`
+
+	// Sealed and State answer OpBridgeAnswer: the sealed line, base64, and
+	// the request's state (1 open, 2 answered, 3 lapsed).
+	Sealed string `json:"sealed,omitempty"`
+	State  uint32 `json:"state,omitempty"`
+	// Commitment answers OpBridgeFingerprint.
+	Commitment string `json:"commitment,omitempty"`
 }
 
 // KeyFromPrivate builds a key pair from a raw Curve25519 private key, such
@@ -291,6 +319,28 @@ func parseHello(payload []byte) (Hello, error) {
 	}
 	if hello.Close && (hello.Prepay || len(hello.Tickets) > 0) {
 		return Hello{}, errors.New("control: a close carries no tickets")
+	}
+	switch hello.Op {
+	case "":
+	case OpBridgeRequest, OpBridgeAnswer:
+		if k, err := base64.StdEncoding.DecodeString(hello.RequestKey); err != nil || len(k) != 32 {
+			return Hello{}, errors.New("control: a bridge request needs a 32-byte request key")
+		}
+		want := 0
+		if hello.Op == OpBridgeRequest {
+			want = 1
+		}
+		if len(hello.Tickets) != want || hello.Prepay || hello.Close {
+			return Hello{}, fmt.Errorf("control: %s carries %d ticket(s) and nothing else", hello.Op, want)
+		}
+		return hello, nil
+	case OpBridgeFingerprint:
+		if len(hello.Tickets) != 0 || hello.Prepay || hello.Close {
+			return Hello{}, errors.New("control: a fingerprint question carries nothing else")
+		}
+		return hello, nil
+	default:
+		return Hello{}, fmt.Errorf("control: unknown op %q", hello.Op)
 	}
 	if _, err := DecodePublicKey(hello.WGPubkey); err != nil {
 		return Hello{}, err

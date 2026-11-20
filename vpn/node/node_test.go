@@ -775,3 +775,44 @@ func TestClose(t *testing.T) {
 		t.Fatalf("place not freed: %s", r.Error)
 	}
 }
+
+type fakeRelay struct {
+	requested []string
+	state     uint32
+}
+
+func (f *fakeRelay) RequestBridge(_ context.Context, _ uint64, ticket, rk string) error {
+	f.requested = append(f.requested, ticket+"|"+rk)
+	return nil
+}
+func (f *fakeRelay) BridgeAnswer(context.Context, string) (string, uint32, error) {
+	return "c2VhbGVk", f.state, nil
+}
+func (f *fakeRelay) BridgeFingerprint(context.Context, uint64) (string, error) { return "ab", nil }
+
+func TestBridgeOps(t *testing.T) {
+	relay := &fakeRelay{state: 2}
+	wd := newWorld(t, "10.77.0.0/24", func(c *Config) { c.Bridges = relay })
+	rk := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	r := wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeRequest, KeyID: keyID, Tickets: []string{"t"}, RequestKey: rk})
+	if !r.OK || len(relay.requested) != 1 {
+		t.Fatalf("%+v", r)
+	}
+	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeAnswer, RequestKey: rk})
+	if !r.OK || r.Sealed != "c2VhbGVk" || r.State != 2 {
+		t.Fatalf("%+v", r)
+	}
+	r = wd.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeFingerprint, NodeID: 3})
+	if !r.OK || r.Commitment != "ab" {
+		t.Fatalf("%+v", r)
+	}
+	// No session was opened, and the node keeps no record of any of it.
+	if wd.n.Stats().Open != 0 {
+		t.Fatal("a bridge request opened a session")
+	}
+	// A node that does not relay says so.
+	wd2 := newWorld(t, "10.77.0.0/24")
+	if r := wd2.n.HandleHello(control.Hello{Version: control.Version, Op: control.OpBridgeFingerprint}); r.OK {
+		t.Fatal("relayed with no relay")
+	}
+}

@@ -30,6 +30,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
 				{
+					RpcMethod:      "BridgeRequestByKey",
+					Use:            "bridge-request-by-key [request-key]",
+					Short:          "Show a bridge request, and its sealed answer once given",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "request_key"}},
+				},
+				{
+					RpcMethod:      "BridgeRequestsFor",
+					Use:            "bridge-requests-for [bridge-id]",
+					Short:          "List the open requests a bridge must answer",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "bridge_id"}},
+				},
+				{
 					RpcMethod:      "TicketSpent",
 					Use:            "ticket-spent [key-id] [ticket-key-hex]",
 					Short:          "Shows whether a ticket has been redeemed",
@@ -80,6 +92,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:            "redeem-tickets [node-id] [key-id] [tickets]",
 					Short:          "Send a redeem-tickets tx",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "node_id"}, {ProtoField: "key_id"}, {ProtoField: "tickets", Varargs: true}},
+				},
+				{
+					RpcMethod:      "RequestBridge",
+					Use:            "request-bridge [key-id] [ticket] [request-key]",
+					Short:          "Spend a ticket made out to the bridge pool for one bridge line (nodes send this for their clients)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "key_id"}, {ProtoField: "ticket"}, {ProtoField: "request_key"}},
+				},
+				{
+					RpcMethod:      "AnswerBridge",
+					Use:            "answer-bridge [request-id] [sealed]",
+					Short:          "A bridge's sealed answer to a request (the node program sends this)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "request_id"}, {ProtoField: "sealed"}},
 				},
 			},
 		},

@@ -27,6 +27,10 @@ const (
 	// MaxFeeBps caps the protocol fee at 50%, so nodes always keep at least half.
 	MaxFeeBps          uint64 = 5_000
 	MaxRetentionBlocks uint64 = 10_000_000
+	// Bridge hand-out bounds.
+	MaxBridgeAnswerBlocks uint64 = 100_000
+	MaxBridgeTries        uint64 = 20
+	MaxBridgeHandoutLimit uint64 = 10_000
 	// BasisPoints is the denominator for FeeBps.
 	BasisPoints uint64 = 10_000
 )
@@ -56,8 +60,21 @@ func NewParams(
 		MaxBatch:               maxBatch,
 		FeeBps:                 feeBps,
 		RetentionBlocks:        retentionBlocks,
+		BridgeAnswerBlocks:     DefaultBridgeAnswerBlocks,
+		BridgeTries:            DefaultBridgeTries,
+		BridgeHandoutLimit:     DefaultBridgeHandoutLimit,
 	}
 }
+
+// Draft bridge hand-out values: a bridge has about 100 blocks to answer,
+// three bridges are asked before a request lapses, and one bridge line is
+// given to at most 20 people before the bridge must move to be handed out
+// again.
+const (
+	DefaultBridgeAnswerBlocks uint64 = 100
+	DefaultBridgeTries        uint64 = 3
+	DefaultBridgeHandoutLimit uint64 = 20
+)
 
 // DefaultParams returns a default set of parameters.
 func DefaultParams() Params {
@@ -85,6 +102,16 @@ func (p Params) Validate() error {
 
 	if err := validateRetentionBlocks(p.RetentionBlocks); err != nil {
 		return err
+	}
+
+	if p.BridgeAnswerBlocks == 0 || p.BridgeAnswerBlocks > MaxBridgeAnswerBlocks {
+		return errorsmod.Wrapf(ErrInvalidParams, "bridge_answer_blocks must be 1-%d, got %d", MaxBridgeAnswerBlocks, p.BridgeAnswerBlocks)
+	}
+	if p.BridgeTries == 0 || p.BridgeTries > MaxBridgeTries {
+		return errorsmod.Wrapf(ErrInvalidParams, "bridge_tries must be 1-%d, got %d", MaxBridgeTries, p.BridgeTries)
+	}
+	if p.BridgeHandoutLimit == 0 || p.BridgeHandoutLimit > MaxBridgeHandoutLimit {
+		return errorsmod.Wrapf(ErrInvalidParams, "bridge_handout_limit must be 1-%d, got %d", MaxBridgeHandoutLimit, p.BridgeHandoutLimit)
 	}
 
 	return nil
@@ -121,3 +148,14 @@ func validateRetentionBlocks(v uint64) error {
 	}
 	return nil
 }
+
+// BridgePoolID is the node id a ticket names when it pays for a bridge
+// line rather than for service at a node. No node can have this id.
+const BridgePoolID uint64 = 1<<64 - 1
+
+// Bridge request states.
+const (
+	BridgeOpen     uint32 = 1
+	BridgeAnswered uint32 = 2
+	BridgeLapsed   uint32 = 3
+)

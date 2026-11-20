@@ -14,6 +14,8 @@ import (
 type RegistryKeeper interface {
 	// GetNode returns a registered node, or an error if it does not exist.
 	GetNode(ctx context.Context, id uint64) (registrytypes.Node, error)
+	// WalkNodes calls fn for every node, in id order, until fn returns true.
+	WalkNodes(ctx context.Context, fn func(registrytypes.Node) (stop bool, err error)) error
 }
 
 // AuthKeeper defines the expected interface for the Auth module.

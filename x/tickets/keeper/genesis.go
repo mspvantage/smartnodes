@@ -73,6 +73,25 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 		return err
 	}
 
+	// Bridge requests, with their index and queue rebuilt: each waits for
+	// its deadline, which for an answered or lapsed one is its deletion.
+	for _, r := range genState.BridgeRequests {
+		if err := k.saveRequest(ctx, r); err != nil {
+			return err
+		}
+		if err := k.BridgeRequestByKey.Set(ctx, r.RequestKey, r.Id); err != nil {
+			return err
+		}
+	}
+	if err := k.BridgeRequestSeq.Set(ctx, genState.BridgeRequestCount); err != nil {
+		return err
+	}
+	for _, h := range genState.BridgeHandouts {
+		if err := k.BridgeHandouts.Set(ctx, h.BridgeId, h); err != nil {
+			return err
+		}
+	}
+
 	return k.Params.Set(ctx, genState.Params)
 }
 
@@ -128,6 +147,23 @@ func (k Keeper) ExportGenesis(ctx context.Context) (*types.GenesisState, error) 
 	}
 	err = k.SweptKeys.Walk(ctx, nil, func(id uint64) (bool, error) {
 		genesis.SweptKeyIds = append(genesis.SweptKeyIds, id)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = k.BridgeRequest.Walk(ctx, nil, func(_ uint64, r types.BridgeRequest) (bool, error) {
+		genesis.BridgeRequests = append(genesis.BridgeRequests, r)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if genesis.BridgeRequestCount, err = k.BridgeRequestSeq.Peek(ctx); err != nil {
+		return nil, err
+	}
+	err = k.BridgeHandouts.Walk(ctx, nil, func(_ uint64, h types.BridgeHandouts) (bool, error) {
+		genesis.BridgeHandouts = append(genesis.BridgeHandouts, h)
 		return false, nil
 	})
 	if err != nil {

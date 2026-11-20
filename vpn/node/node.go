@@ -53,6 +53,14 @@ type Chain interface {
 	Redeem(ctx context.Context, keyID uint64, tickets [][]byte) error
 }
 
+// BridgeRelay is what a node needs from the chain to pass bridge-line
+// requests on for its clients.
+type BridgeRelay interface {
+	RequestBridge(ctx context.Context, keyID uint64, ticket, requestKey string) error
+	BridgeAnswer(ctx context.Context, requestKey string) (sealed string, state uint32, err error)
+	BridgeFingerprint(ctx context.Context, nodeID uint64) (string, error)
+}
+
 // RedeemError says which ticket in a batch the chain refused.
 type RedeemError struct {
 	Index  int
@@ -106,6 +114,8 @@ type Config struct {
 	CreditLife time.Duration
 	// DNS, if set, is offered to clients as their name server.
 	DNS netip.Addr
+	// Bridges, if set, lets clients request bridge lines through this node.
+	Bridges BridgeRelay
 	// Now returns the current time. Tests replace it.
 	Now func() time.Time
 }
@@ -253,6 +263,9 @@ func (n *Node) issuerKey(ctx context.Context, id uint64) (IssuerKey, error) {
 // extends the session for the Hello's WireGuard key. It is the control
 // exchange's handler.
 func (n *Node) HandleHello(h control.Hello) control.Reply {
+	if h.Op != "" {
+		return n.bridgeOp(h)
+	}
 	if h.Close {
 		return n.close(h.WGPubkey)
 	}
@@ -643,4 +656,35 @@ func (n *Node) Stats() Stats {
 	s.Open = len(n.sessions)
 	s.Credits = len(n.credits)
 	return s
+}
+
+// bridgeOp passes a client's bridge-line request to the chain, or reads an
+// answer or a fingerprint back. The node learns only that some client wants
+// a bridge line: the line itself is sealed to the client's one-time key.
+func (n *Node) bridgeOp(h control.Hello) control.Reply {
+	if n.cfg.Bridges == nil {
+		return control.Reply{Error: "this node does not pass bridge requests on"}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	switch h.Op {
+	case control.OpBridgeRequest:
+		if err := n.cfg.Bridges.RequestBridge(ctx, h.KeyID, h.Tickets[0], h.RequestKey); err != nil {
+			return control.Reply{Error: "the chain refused the request: " + err.Error()}
+		}
+		return control.Reply{OK: true}
+	case control.OpBridgeAnswer:
+		sealed, state, err := n.cfg.Bridges.BridgeAnswer(ctx, h.RequestKey)
+		if err != nil {
+			return control.Reply{Error: "could not read the request: " + err.Error()}
+		}
+		return control.Reply{OK: true, Sealed: sealed, State: state}
+	case control.OpBridgeFingerprint:
+		fp, err := n.cfg.Bridges.BridgeFingerprint(ctx, h.NodeID)
+		if err != nil {
+			return control.Reply{Error: "could not read the registry: " + err.Error()}
+		}
+		return control.Reply{OK: true, Commitment: fp}
+	}
+	return control.Reply{Error: "unknown request"}
 }

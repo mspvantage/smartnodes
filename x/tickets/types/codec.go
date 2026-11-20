@@ -9,6 +9,8 @@ import (
 func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgRedeemTickets{},
+		&MsgRequestBridge{},
+		&MsgAnswerBridge{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
