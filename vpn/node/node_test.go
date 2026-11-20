@@ -746,3 +746,32 @@ func TestReplyOffersDNS(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 }
+
+func TestClose(t *testing.T) {
+	wd := newWorld(t, "10.77.0.0/30")
+	pub := wgKey(t)
+	if r := wd.hello(pub, wd.w.ticket(t, nodeID)); !r.OK {
+		t.Fatal(r.Error)
+	}
+	// A /30 holds one client; closing frees its place at once.
+	if r := wd.hello(wgKey(t), wd.w.ticket(t, nodeID)); r.OK {
+		t.Fatal("over capacity")
+	}
+	close := func(p string) control.Reply {
+		return wd.n.HandleHello(control.Hello{Version: control.Version, KeyID: keyID, WGPubkey: p, Close: true})
+	}
+	if r := close(pub); !r.OK {
+		t.Fatal(r.Error)
+	}
+	if wd.tun.count() != 0 || wd.n.Stats().Open != 0 || wd.n.Stats().Closed != 1 {
+		t.Fatalf("session not ended: %+v", wd.n.Stats())
+	}
+	// Closing a key with no session says the same, and changes nothing.
+	if r := close(wgKey(t)); !r.OK || wd.n.Stats().Closed != 1 {
+		t.Fatal("close of an unknown key")
+	}
+	pub2 := wgKey(t)
+	if r := wd.hello(pub2, wd.w.ticket(t, nodeID)); !r.OK {
+		t.Fatalf("place not freed: %s", r.Error)
+	}
+}

@@ -162,3 +162,47 @@ func (c *CLI) RevealReport(ctx context.Context, round, nodeID, result, speedBand
 		strconv.FormatUint(round, 10), strconv.FormatUint(nodeID, 10),
 		strconv.FormatUint(result, 10), strconv.FormatUint(speedBand, 10), salt)
 }
+
+// ProberAssignments lists the nodes a prober must probe this round.
+func (c *CLI) ProberAssignments(ctx context.Context, proberID uint64) (round uint64, nodeIDs []uint64, err error) {
+	var res struct {
+		Round    number   `json:"round"`
+		NodeIDs  []number `json:"node_ids"`
+		NodeIDsC []number `json:"nodeIds"`
+	}
+	if err := c.query(ctx, &res, "verify", "prober-assignments", strconv.FormatUint(proberID, 10)); err != nil {
+		return 0, nil, err
+	}
+	ids := res.NodeIDs
+	if len(ids) == 0 {
+		ids = res.NodeIDsC
+	}
+	for _, id := range ids {
+		nodeIDs = append(nodeIDs, uint64(id))
+	}
+	return uint64(res.Round), nodeIDs, nil
+}
+
+// MinSpeeds reads the slowest speeds, in Mbit/s, at which probes of entry
+// and exit nodes pass. Zero means no minimum.
+func (c *CLI) MinSpeeds(ctx context.Context) (entry, exit uint64, err error) {
+	var res struct {
+		Params struct {
+			Entry  number `json:"min_entry_mbps"`
+			Exit   number `json:"min_exit_mbps"`
+			EntryC number `json:"minEntryMbps"`
+			ExitC  number `json:"minExitMbps"`
+		} `json:"params"`
+	}
+	if err := c.query(ctx, &res, "verify", "params"); err != nil {
+		return 0, 0, err
+	}
+	entry, exit = uint64(res.Params.Entry), uint64(res.Params.Exit)
+	if entry == 0 {
+		entry = uint64(res.Params.EntryC)
+	}
+	if exit == 0 {
+		exit = uint64(res.Params.ExitC)
+	}
+	return entry, exit, nil
+}

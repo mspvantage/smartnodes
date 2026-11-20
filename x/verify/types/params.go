@@ -52,6 +52,11 @@ var (
 	// DefaultRewardRetentionRounds keeps round budgets for 30 days of
 	// one-hour rounds.
 	DefaultRewardRetentionRounds uint64 = 720
+	// DefaultMinEntryMbps and DefaultMinExitMbps are the slowest speeds a
+	// probe accepts, in megabits per second. Draft values, to be tuned on
+	// the test network.
+	DefaultMinEntryMbps uint64 = 5
+	DefaultMinExitMbps  uint64 = 5
 )
 
 const (
@@ -71,6 +76,8 @@ const (
 	// MaxRewardCapBpsPerYear bounds the yearly reward cap at ten times the
 	// minimum bond.
 	MaxRewardCapBpsPerYear = 100_000
+	// MaxMinMbps bounds the minimum speed settings: 100 Gbit/s.
+	MaxMinMbps = 100_000
 )
 
 // NewParams creates a new Params instance.
@@ -90,6 +97,8 @@ func NewParams(
 	rewardCapBpsPerYear uint64,
 	blocksPerYear uint64,
 	rewardRetentionRounds uint64,
+	minEntryMbps uint64,
+	minExitMbps uint64,
 ) Params {
 	return Params{
 		RoundBlocks:      roundBlocks,
@@ -109,6 +118,8 @@ func NewParams(
 		RewardCapBpsPerYear:   rewardCapBpsPerYear,
 		BlocksPerYear:         blocksPerYear,
 		RewardRetentionRounds: rewardRetentionRounds,
+		MinEntryMbps:          minEntryMbps,
+		MinExitMbps:           minExitMbps,
 	}
 }
 
@@ -130,6 +141,8 @@ func DefaultParams() Params {
 		DefaultRewardCapBpsPerYear,
 		DefaultBlocksPerYear,
 		DefaultRewardRetentionRounds,
+		DefaultMinEntryMbps,
+		DefaultMinExitMbps,
 	)
 }
 
@@ -171,6 +184,9 @@ func (p Params) Validate() error {
 	}
 	if p.NodeShareBps > BpsDenominator {
 		return errorsmod.Wrapf(ErrInvalidParams, "node_share_bps %d, want at most %d", p.NodeShareBps, BpsDenominator)
+	}
+	if p.MinEntryMbps > MaxMinMbps || p.MinExitMbps > MaxMinMbps {
+		return errorsmod.Wrapf(ErrInvalidParams, "minimum speeds %d and %d Mbit/s, want at most %d", p.MinEntryMbps, p.MinExitMbps, MaxMinMbps)
 	}
 	if p.RewardCapBpsPerYear > MaxRewardCapBpsPerYear {
 		return errorsmod.Wrapf(ErrInvalidParams, "reward_cap_bps_per_year %d, want at most %d", p.RewardCapBpsPerYear, MaxRewardCapBpsPerYear)

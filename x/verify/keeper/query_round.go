@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	registrytypes "github.com/mspvantage/smartnodes/x/registry/types"
 	"github.com/mspvantage/smartnodes/x/verify/types"
 )
 
@@ -107,6 +108,70 @@ func (q queryServer) Assignment(ctx context.Context, req *types.QueryAssignmentR
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		res.ProberIds = append(res.ProberIds, id)
+	}
+	return res, nil
+}
+
+// ProberAssignments lists the nodes a prober must probe in the current
+// round: every active, unjailed, selected node whose assignment includes it.
+// It reads every node, which costs the queried server, not the chain, and
+// saves the prober asking about each node in turn.
+func (q queryServer) ProberAssignments(ctx context.Context, req *types.QueryProberAssignmentsRequest) (*types.QueryProberAssignmentsResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+	round, _, err := q.k.CurrentRound(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	res := &types.QueryProberAssignmentsResponse{Round: round}
+	if round == 0 {
+		return res, nil
+	}
+	params, err := q.k.Params.Get(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	seed, err := q.k.RoundSeed.Get(ctx, round)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	active, err := q.k.activeCount(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// The prober's places in the active list; usually one.
+	mine := map[uint64]bool{}
+	for idx := uint64(0); idx < active; idx++ {
+		id, err := q.k.ActiveList.Get(ctx, idx)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if id == req.ProberId {
+			mine[idx] = true
+		}
+	}
+	if len(mine) == 0 {
+		return res, nil
+	}
+	err = q.k.registryKeeper.WalkNodes(ctx, func(n registrytypes.Node) (bool, error) {
+		if n.Status != registrytypes.StatusActive || !types.Selected(seed, n.Id, params.SampleBps) {
+			return false, nil
+		}
+		jailed, err := q.k.isJailed(ctx, n.Id)
+		if err != nil || jailed {
+			return false, err
+		}
+		for _, idx := range types.AssignedIndices(seed, n.Id, active, params.ProbersPerNode) {
+			if mine[idx] {
+				res.NodeIds = append(res.NodeIds, n.Id)
+				break
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return res, nil
 }

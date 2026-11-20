@@ -30,6 +30,38 @@ type state struct {
 	Pinned string `json:"pinned,omitempty"`
 	// Resolv is the name server file before connecting, if it was changed.
 	Resolv *string `json:"resolv,omitempty"`
+	// Close lists the sessions to end at the nodes on disconnect. It holds
+	// session public keys and node details, nothing secret.
+	Close []closeTarget `json:"close,omitempty"`
+}
+
+// closeTarget is one open session.
+type closeTarget struct {
+	ChainID  string `json:"chain_id"`
+	NodeID   uint64 `json:"node_id"`
+	NodeKey  string `json:"node_key"`
+	Endpoint string `json:"endpoint"`
+	WGPubkey string `json:"wg_pubkey"`
+}
+
+func readState() (state, error) {
+	var st state
+	raw, err := os.ReadFile(stateFile)
+	if err != nil {
+		return st, err
+	}
+	err = json.Unmarshal(raw, &st)
+	return st, err
+}
+
+// rememberClose records a session to end on disconnect.
+func rememberClose(t closeTarget) error {
+	st, err := readState()
+	if err != nil {
+		return err
+	}
+	st.Close = append(st.Close, t)
+	return writeState(st)
 }
 
 // resolvPath is the machine's name server file.

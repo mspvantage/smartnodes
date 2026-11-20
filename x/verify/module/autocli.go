@@ -46,6 +46,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:     "Shows what the node rewards pool holds, what it owes and the current round's budget",
 				},
 				{
+					RpcMethod:      "ProberAssignments",
+					Use:            "prober-assignments [prober-id]",
+					Short:          "List the nodes a prober must probe this round",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "prober_id"}},
+				},
+				{
 					RpcMethod:      "Assignment",
 					Use:            "assignment [node-id]",
 					Short:          "Shows whether a node is probed this round and which probers are assigned to it",

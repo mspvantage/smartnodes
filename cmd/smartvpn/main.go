@@ -441,6 +441,7 @@ func up(args []string) (err error) {
 	if err := iface(outerIface).SetUpClient(k.Private, p.key, p.endpoint, addr); err != nil {
 		return err
 	}
+	_ = rememberClose(closeTarget{ChainID: *chainID, NodeID: p.id, NodeKey: p.key, Endpoint: p.endpoint.String(), WGPubkey: pubOf(k)})
 	if reply.DNS != "" {
 		if err := setResolver(reply.DNS); err != nil {
 			return err

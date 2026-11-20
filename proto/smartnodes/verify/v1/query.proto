@@ -44,6 +44,10 @@ service Query {
     option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/assignment/{node_id}";
   }
 
+  // ProberAssignments lists the nodes a prober must probe this round.
+  rpc ProberAssignments(QueryProberAssignmentsRequest) returns (QueryProberAssignmentsResponse) {
+    option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/prober_assignments/{prober_id}";
+  }
   // RewardPool returns the state of the node rewards pool.
   rpc RewardPool(QueryRewardPoolRequest) returns (QueryRewardPoolResponse) {
     option (google.api.http).get = "/mspvantage/smartnodes/verify/v1/reward_pool";
@@ -138,4 +142,16 @@ message QueryRewardPoolResponse {
   uint64 owed = 3;
   // round_budget is the current round's budget for verified nodes.
   uint64 round_budget = 4;
+}
+
+// QueryProberAssignmentsRequest defines the QueryProberAssignmentsRequest message.
+message QueryProberAssignmentsRequest {
+  uint64 prober_id = 1;
+}
+
+// QueryProberAssignmentsResponse defines the QueryProberAssignmentsResponse message.
+message QueryProberAssignmentsResponse {
+  uint64 round = 1;
+  // node_ids are the active, unjailed nodes this prober is assigned to.
+  repeated uint64 node_ids = 2;
 }

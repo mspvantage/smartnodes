@@ -117,6 +117,7 @@ type Stats struct {
 	Credits     int
 	Accepted    uint64
 	Prepaid     uint64
+	Closed      uint64
 	CreditsUsed uint64
 	Refused     uint64
 	Redeemed    uint64
@@ -252,6 +253,9 @@ func (n *Node) issuerKey(ctx context.Context, id uint64) (IssuerKey, error) {
 // extends the session for the Hello's WireGuard key. It is the control
 // exchange's handler.
 func (n *Node) HandleHello(h control.Hello) control.Reply {
+	if h.Close {
+		return n.close(h.WGPubkey)
+	}
 	if len(h.Tickets) == 0 {
 		if h.Prepay {
 			return n.refuse("a prepayment needs tickets")
@@ -400,6 +404,18 @@ func (n *Node) HandleHello(h control.Hello) control.Reply {
 	}
 	n.stats.Accepted += uint64(len(tickets))
 	return reply
+}
+
+// close ends a session at its client's request. The reply is the same
+// whether or not a session was open, so it tells the asker nothing.
+func (n *Node) close(pub string) control.Reply {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if _, ok := n.sessions[pub]; ok {
+		n.endLocked(pub)
+		n.stats.Closed++
+	}
+	return control.Reply{OK: true}
 }
 
 // useCredit opens or extends a session from time paid ahead for the key.

@@ -23,6 +23,9 @@ type RegistryKeeper interface {
 	// MinBondFor returns the minimum bond of a tier. A node's reward cap is
 	// sized from it.
 	MinBondFor(ctx context.Context, tier uint64) (uint64, error)
+	// WalkNodes calls fn for every registered node, in id order, until fn
+	// returns true or an error.
+	WalkNodes(ctx context.Context, fn func(registrytypes.Node) (stop bool, err error)) error
 }
 
 // TicketsKeeper defines what the verify module needs from the tickets module.

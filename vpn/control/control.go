@@ -82,6 +82,9 @@ type Hello struct {
 	// Prepay asks the node to hold the tickets as credit for a session that
 	// opens later with WGPubkey, instead of opening one now.
 	Prepay bool `json:"prepay,omitempty"`
+	// Close ends the session for WGPubkey now, so the node can give its
+	// place to someone else. It carries no tickets.
+	Close bool `json:"close,omitempty"`
 }
 
 // Reply is what the node answers.
@@ -285,6 +288,9 @@ func parseHello(payload []byte) (Hello, error) {
 	}
 	if hello.Prepay && len(hello.Tickets) == 0 {
 		return Hello{}, errors.New("control: a prepayment needs tickets")
+	}
+	if hello.Close && (hello.Prepay || len(hello.Tickets) > 0) {
+		return Hello{}, errors.New("control: a close carries no tickets")
 	}
 	if _, err := DecodePublicKey(hello.WGPubkey); err != nil {
 		return Hello{}, err

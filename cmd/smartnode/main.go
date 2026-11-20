@@ -334,6 +334,6 @@ func resolve(ctx context.Context, endpoint string) (netip.AddrPort, error) {
 // logStats writes the node's totals. Nothing here identifies a client.
 func logStats(n *node.Node, failed uint64) {
 	s := n.Stats()
-	log.Printf("sessions open %d; credits held %d; tickets accepted %d, prepaid %d, refused %d, redeemed %d, unconfirmed %d; credits used %d; failed exchanges %d",
-		s.Open, s.Credits, s.Accepted, s.Prepaid, s.Refused, s.Redeemed, s.Unconfirmed, s.CreditsUsed, failed)
+	log.Printf("sessions open %d, closed early %d; credits held %d; tickets accepted %d, prepaid %d, refused %d, redeemed %d, unconfirmed %d; credits used %d; failed exchanges %d",
+		s.Open, s.Closed, s.Credits, s.Accepted, s.Prepaid, s.Refused, s.Redeemed, s.Unconfirmed, s.CreditsUsed, failed)
 }

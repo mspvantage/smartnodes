@@ -71,8 +71,6 @@ func run(args []string) error {
 	stateDir := fs.String("state-dir", "/var/lib/smartprobe", "folder for reports waiting to be opened")
 	uplink := fs.String("uplink", "", "this machine's internet interface (default: the one with the default route)")
 	wait := fs.Duration("wait", 30*time.Second, "longest random wait between paying an exit and using it")
-	minEntry := fs.Float64("min-entry-mbps", 5, "slowest acceptable speed through an entry node")
-	minExit := fs.Float64("min-exit-mbps", 5, "slowest acceptable speed through an exit node")
 	speedURL := fs.String("speed-url", defaultSpeedURL, "file to download to measure speed")
 	var known urlList
 	fs.Var(&known, "known-url", "an ordinary public file that never changes, to check traffic is unaltered; repeatable")
@@ -131,7 +129,7 @@ func run(args []string) error {
 
 	p := &prober{cli: cli, wallet: w, store: store, net: plan, self: self, smartvpn: vpnPath, id: info.ID,
 		chainID: *chainID, wait: *wait, speedURL: *speedURL, knownURLs: known,
-		minMbps: map[uint64]float64{chain.TierEntry: *minEntry, chain.TierExit: *minExit}}
+		minMbps: map[uint64]float64{}}
 	log.Printf("prober %d (%s) started; %d tickets in the wallet", p.id, owner, w.Left())
 	return p.loop(ctx)
 }
@@ -240,24 +238,31 @@ func (p *prober) probeRound(ctx context.Context, round uint64, left time.Duratio
 		log.Printf("round %d: not in the active set yet; nothing to probe", round)
 		return
 	}
+	// Every prober judges speed by the chain's settings.
+	minEntry, minExit, err := p.cli.MinSpeeds(ctx)
+	if err != nil {
+		log.Printf("round %d: reading the speed settings: %v", round, err)
+		return
+	}
+	p.minMbps = map[uint64]float64{chain.TierEntry: float64(minEntry), chain.TierExit: float64(minExit)}
 	nodes, err := p.cli.ListNodes(ctx)
 	if err != nil {
 		log.Printf("round %d: reading the registry: %v", round, err)
 		return
 	}
-	var mine []chain.NodeInfo
+	assignedRound, assigned, err := p.cli.ProberAssignments(ctx, p.id)
+	if err != nil || assignedRound != round {
+		log.Printf("round %d: reading assignments: %v", round, err)
+		return
+	}
+	byID := map[uint64]chain.NodeInfo{}
 	for _, n := range nodes {
-		if n.Status != chain.StatusActive {
-			continue
-		}
-		a, err := p.cli.Assigned(ctx, n.ID)
-		if err != nil || a.Round != round || !a.Selected {
-			continue
-		}
-		for _, id := range a.Probers {
-			if id == p.id {
-				mine = append(mine, n)
-			}
+		byID[n.ID] = n
+	}
+	var mine []chain.NodeInfo
+	for _, id := range assigned {
+		if n, ok := byID[id]; ok && n.Status == chain.StatusActive {
+			mine = append(mine, n)
 		}
 	}
 	log.Printf("round %d: assigned %d node(s)", round, len(mine))

@@ -234,3 +234,11 @@ func (k Keeper) controlledNode(ctx context.Context, id uint64, signer []byte) (t
 	}
 	return types.Node{}, errorsmod.Wrapf(types.ErrNotOperator, "node %d", id)
 }
+
+// WalkNodes calls fn for every registered node, in id order, until fn
+// returns true or an error.
+func (k Keeper) WalkNodes(ctx context.Context, fn func(types.Node) (bool, error)) error {
+	return k.Node.Walk(ctx, nil, func(_ uint64, n types.Node) (bool, error) {
+		return fn(n)
+	})
+}

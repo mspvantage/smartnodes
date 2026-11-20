@@ -84,6 +84,14 @@ func (f Forwarder) serveUDP(pc net.PacketConn, slots chan struct{}) {
 		}
 		go func() {
 			defer func() { <-slots }()
+			// Clients block IPv6, so an IPv6 address would only make them
+			// wait for a connection that cannot work. Answer "none".
+			if empty, ok := NoIPv6(buf[:n]); ok {
+				mu.Lock()
+				_, _ = pc.WriteTo(empty, from)
+				mu.Unlock()
+				return
+			}
 			answer, err := f.ask(buf[:n])
 			if err != nil {
 				return
@@ -151,4 +159,49 @@ func (f Forwarder) serveTCP(ln net.Listener, slots chan struct{}) {
 			<-done
 		}()
 	}
+}
+
+const typeAAAA = 28
+
+// NoIPv6 answers a query for IPv6 addresses (type AAAA) with an empty,
+// successful reply: the name exists but has no address of that kind, so
+// the client uses IPv4 at once. ok is false for any other query.
+func NoIPv6(query []byte) (reply []byte, ok bool) {
+	if len(query) < 12 || query[2]&0x80 != 0 {
+		return nil, false
+	}
+	// Exactly one question.
+	if query[4] != 0 || query[5] != 1 {
+		return nil, false
+	}
+	// Walk the name's labels to find the question type.
+	i := 12
+	for {
+		if i >= len(query) {
+			return nil, false
+		}
+		l := int(query[i])
+		if l == 0 {
+			i++
+			break
+		}
+		if l&0xc0 != 0 {
+			return nil, false // compression has no place in a question
+		}
+		i += 1 + l
+	}
+	if i+4 > len(query) {
+		return nil, false
+	}
+	if int(query[i])<<8|int(query[i+1]) != typeAAAA {
+		return nil, false
+	}
+	end := i + 4
+	reply = append([]byte(nil), query[:end]...)
+	reply[2] = 0x80 | query[2]&0x79 // a reply; same opcode; recursion desired copied
+	reply[3] = 0x80                 // recursion available; no error
+	for j := 6; j < 12; j++ {
+		reply[j] = 0 // no answers, authority or additional records
+	}
+	return reply, true
 }

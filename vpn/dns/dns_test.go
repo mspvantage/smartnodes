@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 )
@@ -110,5 +111,44 @@ func TestUpstream(t *testing.T) {
 	}
 	if _, err := Upstream("search lan\n"); err == nil {
 		t.Fatal("no name server accepted")
+	}
+}
+
+func question(name string, qtype uint16) []byte {
+	q := []byte{0xab, 0xcd, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 1}
+	for _, l := range strings.Split(name, ".") {
+		q = append(q, byte(len(l)))
+		q = append(q, l...)
+	}
+	q = append(q, 0, byte(qtype>>8), byte(qtype), 0, 1)
+	// An EDNS record in the additional section, as resolvers send.
+	q = append(q, 0, 0, 41, 0x10, 0, 0, 0, 0, 0, 0, 0)
+	return q
+}
+
+func TestNoIPv6(t *testing.T) {
+	r, ok := NoIPv6(question("www.wikipedia.org", 28))
+	if !ok {
+		t.Fatal("AAAA not answered")
+	}
+	if r[0] != 0xab || r[1] != 0xcd || r[2]&0x80 == 0 || r[2]&0x01 == 0 || r[3]&0x0f != 0 {
+		t.Fatalf("header % x", r[:4])
+	}
+	if r[5] != 1 || r[7] != 0 || r[9] != 0 || r[11] != 0 {
+		t.Fatalf("counts % x", r[4:12])
+	}
+	if len(r) != 12+len("www.wikipedia.org")+2+4 {
+		t.Fatalf("length %d", len(r))
+	}
+	if _, ok := NoIPv6(question("www.wikipedia.org", 1)); ok {
+		t.Fatal("an A query was answered empty")
+	}
+	if _, ok := NoIPv6([]byte{1, 2, 3}); ok {
+		t.Fatal("garbage answered")
+	}
+	bad := question("a.b", 28)
+	bad[12] = 0xc0 // a compression pointer in a question
+	if _, ok := NoIPv6(bad); ok {
+		t.Fatal("compressed question answered")
 	}
 }

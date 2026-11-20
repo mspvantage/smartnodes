@@ -64,3 +64,26 @@ func TestSendReports(t *testing.T) {
 		t.Fatal("mismatched lists accepted")
 	}
 }
+
+func TestProberAssignmentsAndSpeeds(t *testing.T) {
+	s := &script{answers: []func([]string) ([]byte, error){
+		ok(`{"round":"9","node_ids":["0","4"]}`),
+		ok(`{"round":"9"}`),
+		ok(`{"params":{"round_blocks":"720","min_entry_mbps":"5","min_exit_mbps":"20"}}`),
+	}}
+	c := newCLI(s)
+	r, ids, err := c.ProberAssignments(context.Background(), 2)
+	if err != nil || r != 9 || len(ids) != 2 || ids[1] != 4 {
+		t.Fatalf("%d %v %v", r, ids, err)
+	}
+	if got := strings.Join(s.calls[0], " "); !strings.HasPrefix(got, "query verify prober-assignments 2") {
+		t.Fatalf("call %s", got)
+	}
+	if _, ids, _ := c.ProberAssignments(context.Background(), 2); len(ids) != 0 {
+		t.Fatal("empty list")
+	}
+	e, x, err := c.MinSpeeds(context.Background())
+	if err != nil || e != 5 || x != 20 {
+		t.Fatalf("%d %d %v", e, x, err)
+	}
+}

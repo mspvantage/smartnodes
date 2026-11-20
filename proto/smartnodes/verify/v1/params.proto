@@ -39,4 +39,9 @@ message Params {
   // reward_retention_rounds is how many rounds a round's reward budget is
   // kept. A share not fixed within this time is forfeited to the pool.
   uint64 reward_retention_rounds = 15;
+  // min_entry_mbps and min_exit_mbps are the slowest speeds, in megabits
+  // per second, at which a probe through an entry or an exit node passes.
+  // Every prober judges by these, so all judge alike. Zero means no minimum.
+  uint64 min_entry_mbps = 16;
+  uint64 min_exit_mbps = 17;
 }

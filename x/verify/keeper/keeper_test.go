@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"sort"
 	"testing"
 	"time"
 
@@ -111,6 +112,22 @@ func (m *mockRegistry) MinBondFor(_ context.Context, tier uint64) (uint64, error
 		return exitMinBond, nil
 	}
 	return 0, registrytypes.ValidateTier(tier)
+}
+
+// WalkNodes visits the mock's nodes in id order.
+func (m *mockRegistry) WalkNodes(_ context.Context, fn func(registrytypes.Node) (bool, error)) error {
+	ids := make([]uint64, 0, len(m.nodes))
+	for id := range m.nodes {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	for _, id := range ids {
+		stop, err := fn(m.nodes[id])
+		if err != nil || stop {
+			return err
+		}
+	}
+	return nil
 }
 
 // SlashNode burns bond like the real registry: at most what the node has.

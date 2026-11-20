@@ -81,6 +81,7 @@ func (c *client) open() (err error) {
 		return err
 	}
 	c.entryEnds = time.Unix(reply.Expires, 0)
+	_ = rememberClose(closeTarget{ChainID: c.chainID, NodeID: c.entry.id, NodeKey: c.entry.key, Endpoint: c.entry.endpoint.String(), WGPubkey: pubOf(c.outer)})
 	c.say("entry node %d: tunnel address %s", c.entry.id, outerAddr)
 
 	// Hop two: the exit node, through the entry. A saved credit first.
@@ -110,6 +111,7 @@ func (c *client) open() (err error) {
 		c.say("name lookups go to the exit's name server %s", reply.DNS)
 	}
 	c.exitEnds = time.Unix(reply.Expires, 0)
+	_ = rememberClose(closeTarget{ChainID: c.chainID, NodeID: c.exit.id, NodeKey: c.exit.key, Endpoint: c.exit.endpoint.String(), WGPubkey: pubOf(c.inner)})
 	c.say("exit node %d: tunnel address %s", c.exit.id, innerAddr)
 	c.say("connected through two hops; entry session ends %s, exit session ends %s", clock(c.entryEnds), clock(c.exitEnds))
 	return nil
@@ -220,13 +222,43 @@ func (c *client) buyCredit() error {
 	})
 }
 
-// teardown removes both tunnels and the kill switch and puts routes and
-// name servers back.
+// teardown tells the nodes the sessions are over, then removes both tunnels
+// and the kill switch and puts routes and name servers back.
 func teardown() error {
+	closeSessions(6 * time.Second)
 	_ = iface(innerIface).Delete()
 	_ = iface(outerIface).Delete()
 	killSwitch().Remove()
 	return restoreRoutes()
+}
+
+// closeSessions asks each node to end its session, all at once, waiting at
+// most d. The exit is reached through the tunnels, which are still up. A
+// node that does not answer just lets the session run out.
+func closeSessions(d time.Duration) {
+	st, err := readState()
+	if err != nil || len(st.Close) == 0 {
+		return
+	}
+	done := make(chan struct{}, len(st.Close))
+	for _, t := range st.Close {
+		go func(t closeTarget) {
+			defer func() { done <- struct{}{} }()
+			p, err := newPeer(t.NodeID, t.NodeKey, t.Endpoint)
+			if err != nil {
+				return
+			}
+			_, _ = ask(t.ChainID, p, control.Hello{WGPubkey: t.WGPubkey, Close: true})
+		}(t)
+	}
+	timeout := time.After(d)
+	for range st.Close {
+		select {
+		case <-done:
+		case <-timeout:
+			return
+		}
+	}
 }
 
 // randomBetween picks a time between lo and hi.
