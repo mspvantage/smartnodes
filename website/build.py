@@ -95,7 +95,7 @@ LAYOUT = """<!doctype html>
   <div class="container-xl">
     <div class="row text-center align-items-center">
       <div class="col-12 col-lg-auto mb-3 mb-lg-0">
-        SmartNodes is free, open-source software. This site sets no cookies and loads nothing from other sites.
+        SmartNodes is free software under the <a href="{repo}/blob/main/LICENSE" class="link-secondary">GNU GPL v3</a>. This site sets no cookies and loads nothing from other sites.
       </div>
       <div class="col-lg-auto ms-lg-auto">
         <ul class="list-inline list-inline-dots mb-0">

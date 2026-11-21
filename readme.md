@@ -47,3 +47,17 @@ curl https://get.ignite.com/mspvantage/smartnodes@latest! | sudo bash
 - [Tutorials](https://docs.ignite.com/guide)
 - [Ignite CLI docs](https://docs.ignite.com)
 - [Cosmos SDK docs](https://docs.cosmos.network)
+
+## Licence
+
+Copyright (C) 2026 The SmartNodes authors.
+
+SmartNodes is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
+
+The website in `website/` uses [Tabler](https://tabler.io), under the MIT
+licence.
