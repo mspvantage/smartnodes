@@ -1,0 +1,22 @@
+# Test network only: signs ticket purchases automatically.
+# Install: sudo cp smartissuer.service /etc/systemd/system/
+#          sudo cp issuer.env.example /etc/smartnode/issuer.env   (then edit it)
+#          sudo systemctl daemon-reload && sudo systemctl enable --now smartissuer
+[Unit]
+Description=SmartNodes test ticket issuer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=smartnodes
+Group=smartnodes
+EnvironmentFile=/etc/smartnode/issuer.env
+ExecStart=/usr/local/bin/smartissuer $ISSUER_FLAGS
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

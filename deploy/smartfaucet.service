@@ -1,0 +1,23 @@
+# Test network only: gives out test SNODE. Listens on localhost; put an HTTPS
+# proxy (Caddy, nginx or Cloudflare) in front of it.
+# Install: sudo cp smartfaucet.service /etc/systemd/system/
+#          sudo cp faucet.env.example /etc/smartnode/faucet.env   (then edit it)
+#          sudo systemctl daemon-reload && sudo systemctl enable --now smartfaucet
+[Unit]
+Description=SmartNodes test faucet
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=smartnodes
+Group=smartnodes
+EnvironmentFile=/etc/smartnode/faucet.env
+ExecStart=/usr/local/bin/smartfaucet $FAUCET_FLAGS
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

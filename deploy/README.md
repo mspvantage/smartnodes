@@ -9,3 +9,5 @@
 
 Step-by-step guides: https://smartnodes.tech/validator.html and
 https://smartnodes.tech/run-a-node.html
+| `smartissuer.service` + `issuer.env.example` | Test network only: signs ticket purchases automatically |
+| `smartfaucet.service` + `faucet.env.example` | Test network only: gives out test SNODE, behind an HTTPS proxy |

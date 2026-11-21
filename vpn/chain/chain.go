@@ -203,7 +203,7 @@ func (n nodeJSON) info() NodeInfo {
 
 // SignerAddress returns the address of the key that signs redemptions.
 func (c *CLI) SignerAddress(ctx context.Context) (string, error) {
-	out, err := c.Run(ctx, []string{"keys", "show", c.From, "-a", "--keyring-backend", c.KeyringBackend, "--home", c.Home})
+	out, err := c.Run(ctx, append([]string{"keys", "show", c.From, "-a", "--keyring-backend", c.KeyringBackend}, c.homeArgs()...))
 	if err != nil {
 		return "", err
 	}
@@ -296,7 +296,9 @@ func (c *CLI) Redeem(ctx context.Context, keyID uint64, tickets [][]byte) error 
 		args = append(args, base64.StdEncoding.EncodeToString(t))
 	}
 	args = append(args,
-		"--from", c.From, "--keyring-backend", c.KeyringBackend, "--home", c.Home,
+		"--from", c.From, "--keyring-backend", c.KeyringBackend)
+	args = append(args, c.homeArgs()...)
+	args = append(args,
 		"--chain-id", c.ChainID, "--node", c.RPC,
 		"--gas", "auto", "--gas-adjustment", "1.5", "--gas-prices", c.GasPrices,
 		"--yes", "-o", "json")
@@ -329,7 +331,9 @@ func (c *CLI) Send(ctx context.Context, args ...string) error {
 	defer c.txMu.Unlock()
 	full := append([]string{"tx"}, args...)
 	full = append(full,
-		"--from", c.From, "--keyring-backend", c.KeyringBackend, "--home", c.Home,
+		"--from", c.From, "--keyring-backend", c.KeyringBackend)
+	full = append(full, c.homeArgs()...)
+	full = append(full,
 		"--chain-id", c.ChainID, "--node", c.RPC,
 		"--gas", "auto", "--gas-adjustment", "1.5", "--gas-prices", c.GasPrices,
 		"--yes", "-o", "json")
@@ -391,4 +395,13 @@ func lastJSON(out []byte) []byte {
 		}
 	}
 	return out
+}
+
+// homeArgs names smartnodesd's home folder, if one was given; otherwise
+// smartnodesd uses its own default.
+func (c *CLI) homeArgs() []string {
+	if c.Home == "" {
+		return nil
+	}
+	return []string{"--home", c.Home}
 }
