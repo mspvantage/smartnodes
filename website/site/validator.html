@@ -79,6 +79,11 @@ export GENESIS_SHA256=PUBLISHED_AT_LAUNCH
 export SEEDS="PUBLISHED_AT_LAUNCH"</code></pre>
 
 <h2 id="s1">1. Prepare the server</h2>
+<div class="alert alert-info"><b>Shortcut:</b> the setup script does steps 1 and 2 for you, puts the service file in place (so you can skip the copy in step 7), and checks the result. Download it, read it, then run it:
+<pre class="mt-2 mb-0"><code>curl -fsSLO https://raw.githubusercontent.com/mspvantage/smartnodes/main/deploy/smartnodes-setup.sh
+less smartnodes-setup.sh
+sudo bash smartnodes-setup.sh --role validator</code></pre>
+It never touches keys and starts nothing. Then carry on from step 3.</div>
 <p>Log in as a user with <code>sudo</code>. Update the system, install the tools, and open only the ports a validator needs: SSH, and 26656 for the chain's peer-to-peer traffic.</p>
 <pre><code>sudo apt update && sudo apt upgrade -y
 sudo apt install -y git build-essential jq curl ufw

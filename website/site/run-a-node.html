@@ -83,6 +83,11 @@ export RPC=PUBLISHED_AT_LAUNCH
 export TX="--chain-id $CHAIN_ID --node $RPC --gas auto --gas-adjustment 1.5 --gas-prices 0.025usnode"</code></pre>
 
 <h2 id="s1">1. Prepare the server</h2>
+<div class="alert alert-info"><b>Shortcut:</b> the setup script does steps 1 and 2 for you, installs Xray, and writes the settings file of step 7 for you to fill in, and checks the result. Download it, read it, then run it:
+<pre class="mt-2 mb-0"><code>curl -fsSLO https://raw.githubusercontent.com/mspvantage/smartnodes/main/deploy/smartnodes-setup.sh
+less smartnodes-setup.sh
+sudo bash smartnodes-setup.sh --role entry      # or exit, bridge, prober</code></pre>
+It never touches keys and starts nothing. Then carry on from step 3.</div>
 <p>On the server, update it, install the tools, and open the ports: SSH, the node's port 51820 (TCP and UDP), and 443 for the disguise on an entry or bridge.</p>
 <pre><code>sudo apt update && sudo apt upgrade -y
 sudo apt install -y git build-essential jq curl ufw wireguard-tools iproute2 iptables unzip
