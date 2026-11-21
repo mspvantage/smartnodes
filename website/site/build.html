@@ -44,7 +44,7 @@
 <main class="page-wrapper">
 <div class="container-xl sn-section"><div class="row g-5">
 <aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
-  <a href="#layout">The code</a><a href="#build">Build</a><a href="#test">Tests</a><a href="#local">A local test chain</a><a href="#trials">Live trials</a><a href="#site">This website</a><a href="#contribute">Contributing</a>
+  <a href="#layout">The code</a><a href="#build">Build</a><a href="#test">Tests</a><a href="#local">A local test chain</a><a href="#trials">Live trials</a><a href="#contribute">Contributing</a>
 </nav></aside>
 <article class="col-lg-9 sn-doc">
 <h1>Build and develop</h1>
@@ -79,12 +79,6 @@ go build -o bin/ ./cmd/...</code></pre>
 
 <h2 id="trials">Live trials</h2>
 <p>Each feature of the VPN is tried end to end on one Linux server, using network namespaces to stand in for separate machines: a device, an entry, exits, bridges, and a censor that blocks addresses. Trials need root, a fresh local chain, and Xray. They clean up after themselves.</p>
-
-<h2 id="site">This website</h2>
-<p>The pages are in <code>website/pages/</code>; the shared header and footer are in <code>website/build.py</code>. To rebuild after an edit:</p>
-<pre><code>cd website
-python3 build.py</code></pre>
-<p>The finished site is in <code>website/site/</code>, which is what gets published. It uses <a href="https://tabler.io">Tabler</a>, kept in the site itself, so no page loads anything from another site.</p>
 
 <h2 id="contribute">Contributing</h2>
 <p>Reviews are especially welcome of the ticket cryptography (<code>x/tickets/crypto</code>), the control channel (<code>vpn/control</code>) and the bridge sealing (<code>vpn/bridge</code>). Please report security problems privately, as described on the <a href="security.html#report">security page</a>, not in public issues.</p>
