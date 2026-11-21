@@ -206,6 +206,12 @@ func New(
 		return app.App.InitChainer(ctx, req)
 	})
 
+	// Chain upgrades: handlers, and store changes when starting just after
+	// an upgrade height. Both must be in place before the stores load.
+	if err := app.registerUpgrades(); err != nil {
+		panic(err)
+	}
+
 	if err := app.Load(loadLatest); err != nil {
 		panic(err)
 	}

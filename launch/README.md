@@ -5,6 +5,7 @@
 | `testnet.json` | The network's settings: chain id, starting balances, chain parameters |
 | `build-genesis.sh` | Builds the genesis file from them: `draft`, then `final` |
 | `rehearsal.sh` | Rehearses a whole launch on one machine with four validators |
+| `upgrade-rehearsal.sh` | Rehearses a chain upgrade by vote on a running four-validator network |
 
 ## Launch day, in order
 
