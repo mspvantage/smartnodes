@@ -18,13 +18,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish:
+  # Two jobs, as GitHub's own Pages workflow does: the site is uploaded in
+  # one and published in the next, so the publish step never looks for the
+  # upload before GitHub has finished storing it.
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check the built site matches the pages
         run: |
           cd website
@@ -33,5 +33,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: website/site
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
