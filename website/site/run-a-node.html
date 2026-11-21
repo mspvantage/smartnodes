@@ -99,20 +99,26 @@ sudo systemctl restart systemd-journald</code></pre>
 <p><b>Check:</b> <code>swapon --show</code> prints nothing, and <code>sudo ufw status</code> lists 51820 and 443/tcp. Encrypted swap is also accepted, if you need swap.</p>
 
 <h2 id="s2">2. Install the programs</h2>
-<pre><code>cd /tmp
-curl -LO https://go.dev/dl/go1.26.11.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.11.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' &gt;&gt; ~/.profile && source ~/.profile
-
-git clone https://github.com/mspvantage/smartnodes.git ~/smartnodes
-cd ~/smartnodes
-go build -o bin/ ./cmd/...
-sudo install -m 0755 bin/smartnode bin/smartnodesd bin/smartprobe bin/smartvpn /usr/local/bin/</code></pre>
+<p>On the server, download the release, check it, and install it:</p>
+<pre><code>export VERSION=v0.1.0
+export ARCH=$(dpkg --print-architecture)      # amd64 or arm64
+cd /tmp
+curl -fLO https://github.com/mspvantage/smartnodes/releases/download/$VERSION/smartnodes_${VERSION}_linux_${ARCH}.tar.gz
+curl -fLO https://github.com/mspvantage/smartnodes/releases/download/$VERSION/SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
+mkdir -p ~/smartnodes-release
+tar -xzf smartnodes_${VERSION}_linux_${ARCH}.tar.gz -C ~/smartnodes-release --strip-components=1
+sudo install -m 0755 ~/smartnodes-release/bin/* /usr/local/bin/</code></pre>
+<p><b>Check:</b> <code>sha256sum</code> prints <code>OK</code>, and <code>smartnode -h</code> lists its options. If the checksum fails, delete the file and download again.</p>
+<p><b>Or build it yourself</b>, instead of downloading (needs Go 1.26 from <a href="https://go.dev/dl/">go.dev</a>):</p>
+<pre><code>git clone https://github.com/mspvantage/smartnodes.git ~/smartnodes-release && cd ~/smartnodes-release && git checkout $VERSION
+go build -o bin/ ./cmd/... && GOBIN=$PWD/bin go install cosmossdk.io/tools/cosmovisor/cmd/cosmovisor@v1.7.3
+sudo install -m 0755 bin/* /usr/local/bin/</code></pre>
 <p>For an entry, bridge or prober, also install Xray: download the Linux file for your machine from the <a href="https://github.com/XTLS/Xray-core/releases">Xray releases page</a>, check its checksum there, then:</p>
 <pre><code>unzip Xray-linux-64.zip xray
-sudo install -m 0755 xray /usr/local/bin/xray</code></pre>
-<p><b>Check:</b> <code>smartnode -h</code> lists its options, <code>smartnodesd version</code> prints a version, and <code>xray version</code> prints one if you installed it.</p>
-<p>On <b>your own computer</b>, install <code>smartnodesd</code> the same way (<code>go build -o bin/ ./cmd/smartnodesd</code>); it is all you need there.</p>
+sudo install -m 0755 xray /usr/local/bin/xray
+xray version</code></pre>
+<p>On <b>your own computer</b>, you need only <code>smartnodesd</code>. On Linux, use the same download. On a Mac with an Apple chip, download <code>smartnodes_v0.1.0_darwin_arm64.tar.gz</code> from the <a href="https://github.com/mspvantage/smartnodes/releases">releases page</a> and copy its <code>bin/smartnodesd</code> somewhere on your path. On Windows, use it inside <a href="https://learn.microsoft.com/windows/wsl/">WSL</a>.</p>
 
 <h2 id="s3">3. Your operator key (on your computer)</h2>
 <pre><code>smartnodesd keys add operator --keyring-backend file</code></pre>
@@ -145,8 +151,8 @@ smartnodesd tx bank send operator SERVICE_ADDRESS 5000000usnode --keyring-backen
 <p><b>Check:</b> <code>smartnodesd query registry get-node NODE_ID --node $RPC</code> shows your <code>service_key</code>.</p>
 
 <h2 id="s7">7. Write the node's settings (on the server)</h2>
-<pre><code>sudo cp ~/smartnodes/deploy/smartnode@.service /etc/systemd/system/
-sudo cp ~/smartnodes/deploy/node.env.example /etc/smartnode/entry.env
+<pre><code>sudo cp ~/smartnodes-release/deploy/smartnode@.service /etc/systemd/system/
+sudo cp ~/smartnodes-release/deploy/node.env.example /etc/smartnode/entry.env
 sudo chmod 600 /etc/smartnode/entry.env
 sudo nano /etc/smartnode/entry.env</code></pre>
 <p>In the file, replace each <code>CHANGE</code>: your node id, the chain id, and your chain endpoint's address. For an <b>exit</b>, delete the three <code>-reality</code> options. Name the file after the node (<code>entry.env</code>, <code>exit.env</code>); the name is used in the next step.</p>
@@ -207,8 +213,8 @@ sudo smartnodesd keys add prober --keyring-backend test --home /etc/smartnode/ke
   --keyring-backend test --home /etc/smartnode/keys $TX</code></pre></li>
   <li>Give it a ticket wallet at <code>/etc/smartnode/prober-wallet.json</code> (see <a href="use.html#tickets">Get tickets</a>), readable by root only.</li>
   <li>Install and start it:
-<pre><code>sudo cp ~/smartnodes/deploy/smartprobe.service /etc/systemd/system/
-sudo cp ~/smartnodes/deploy/probe.env.example /etc/smartnode/probe.env
+<pre><code>sudo cp ~/smartnodes-release/deploy/smartprobe.service /etc/systemd/system/
+sudo cp ~/smartnodes-release/deploy/probe.env.example /etc/smartnode/probe.env
 sudo chmod 600 /etc/smartnode/probe.env
 sudo nano /etc/smartnode/probe.env      # replace each CHANGE
 sudo systemctl daemon-reload && sudo systemctl enable --now smartprobe</code></pre></li>

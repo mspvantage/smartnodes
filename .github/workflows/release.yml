@@ -1,56 +1,109 @@
-# This workflow is useful if you want to automate the process of:
+# Builds and publishes a release when a version tag such as v0.1.0 is pushed:
 #
-# a) Creating a new prelease when you push a new tag with a "v" prefix (version).
+#   git tag v0.1.0 && git push origin v0.1.0
 #
-#    This type of prerelease is meant to be used for production: alpha, beta, rc, etc. types of releases.
-#    After the prerelease is created, you need to make your changes on the release page at the relevant
-#    Github page and publish your release.
+# Every program is built for Linux on Intel/AMD (amd64) and on ARM (arm64),
+# each on its own kind of machine, on Ubuntu 22.04 so the programs also run
+# on older systems, together with Cosmovisor. smartnodesd alone is also built
+# for Macs with Apple chips, for operators' own computers. The release gets one archive per machine type, a file of
+# SHA-256 checksums, and a signed record from GitHub of how and where each
+# archive was built, which anyone can check with:
 #
-# b) Creating/updating the "latest" prerelease when you push to your default branch.
+#   gh attestation verify FILE --repo mspvantage/smartnodes
 #
-#    This type of prelease is useful to make your bleeding-edge binaries available to advanced users.
-#
-# The workflow will not run if there is no tag pushed with a "v" prefix and no change pushed to your
-# default branch.
-on: push
+# Releases are marked as pre-releases while the network is in testing.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
 
 jobs:
-  might_release:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          fetch-depth: 0
+          go-version-file: go.mod
+      - name: Tests
+        run: go test ./x/... ./vpn/... ./cmd/...
 
-      - name: Prepare Release Variables
-        id: vars
-        uses: ignite/cli/actions/release/vars@main
-
-      - name: Issue Release Assets
-        uses: ignite/cli/actions/cli@main
-        if: ${{ steps.vars.outputs.should_release == 'true' }}
+  build:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+          - arch: arm64
+            runner: macos-latest
+            os: darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          args: chain build --release --release.prefix ${{ steps.vars.outputs.tarball_prefix }} -t linux:amd64 -t darwin:amd64 -t darwin:arm64 -y
+          go-version-file: go.mod
+      - name: Build
         env:
-          DO_NOT_TRACK: 1
-          GOFLAGS: "-buildvcs=false"
-
-      - name: Delete the "latest" Release
-        uses: dev-drprasad/delete-tag-and-release@v0.2.1
-        if: ${{ steps.vars.outputs.is_release_type_latest == 'true' }}
+          VERSION: ${{ github.ref_name }}
+          OS: ${{ matrix.os || 'linux' }}
+          COSMOVISOR: v1.7.3
+        run: |
+          set -euo pipefail
+          NAME="smartnodes_${VERSION}_${OS}_${{ matrix.arch }}"
+          mkdir -p "dist/$NAME/bin"
+          LDFLAGS="-s -w \
+            -X github.com/cosmos/cosmos-sdk/version.Name=smartnodes \
+            -X github.com/cosmos/cosmos-sdk/version.AppName=smartnodesd \
+            -X github.com/cosmos/cosmos-sdk/version.Version=${VERSION} \
+            -X github.com/cosmos/cosmos-sdk/version.Commit=${GITHUB_SHA}"
+          if [ "$OS" = linux ]; then
+            go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "dist/$NAME/bin/" ./cmd/...
+            GOBIN="$PWD/dist/$NAME/bin" go install -trimpath "cosmossdk.io/tools/cosmovisor/cmd/cosmovisor@${COSMOVISOR}"
+            cp -r deploy "dist/$NAME/deploy"
+            printf 'SmartNodes %s for Linux (%s).\nPrograms are in bin/; service files in deploy/.\nGuides: https://smartnodes.tech\n' "$VERSION" "${{ matrix.arch }}" > "dist/$NAME/README.txt"
+          else
+            # Operators' own computers need only the chain's command line.
+            go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "dist/$NAME/bin/" ./cmd/smartnodesd
+            printf 'smartnodesd %s for Mac (Apple chips): the chain command line, for your operator key.\nGuides: https://smartnodes.tech\n' "$VERSION" > "dist/$NAME/README.txt"
+          fi
+          cp LICENSE* "dist/$NAME/" 2>/dev/null || true
+          "dist/$NAME/bin/smartnodesd" version
+          tar -C dist -czf "dist/$NAME.tar.gz" "$NAME"
+      - uses: actions/attest-build-provenance@v2
         with:
-          tag_name: ${{ steps.vars.outputs.tag_name }}
-          delete_release: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish the Release
-        uses: softprops/action-gh-release@v1
-        if: ${{ steps.vars.outputs.should_release == 'true' }}
+          subject-path: dist/*.tar.gz
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.vars.outputs.tag_name }}
-          files: release/*
-          prerelease: true
+          name: ${{ matrix.os || 'linux' }}-${{ matrix.arch }}
+          path: dist/*.tar.gz
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+      - name: Publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.tar.gz dist/SHA256SUMS \
+            --repo "${{ github.repository }}" --prerelease --generate-notes \
+            --title "SmartNodes ${{ github.ref_name }} (test network)"

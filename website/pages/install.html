@@ -4,11 +4,11 @@ nav: install
 
 <div class="container-xl sn-section"><div class="row g-5">
 <aside class="col-lg-3 d-none d-lg-block"><nav class="sn-toc">
-  <a href="#programs">The programs</a><a href="#needs">What you need</a><a href="#build">Build from source</a><a href="#xray">Install Xray</a><a href="#check">Check it worked</a><a href="#update">Updating</a>
+  <a href="#programs">The programs</a><a href="#needs">What you need</a><a href="#build">Download a release</a><a href="#xray">Install Xray</a><a href="#check">Check it worked</a><a href="#update">Updating</a>
 </nav></aside>
 <article class="col-lg-9 sn-doc">
 <h1>Install</h1>
-<div class="alert alert-warning">There are no ready-made downloads or apps yet. For now SmartNodes is built from source on Linux. Apps for Windows, macOS, Android and iPhone come later.</div>
+<div class="alert alert-warning">There are no apps yet: today SmartNodes runs on Linux, from the command line. Apps for Windows, macOS, Android and iPhone come later.</div>
 
 <h2 id="programs">The programs</h2>
 <div class="card my-3"><div class="table-responsive"><table class="table card-table">
@@ -24,7 +24,7 @@ nav: install
 <h2 id="needs">What you need</h2>
 <ul>
   <li>A 64-bit Linux machine with root access and a kernel from 5.6 on, which has WireGuard built in.</li>
-  <li><a href="https://go.dev/dl/">Go</a> 1.26 or newer, and <code>git</code>.</li>
+  <li>Only to build from source: <a href="https://go.dev/dl/">Go</a> 1.26 or newer, and <code>git</code>.</li>
   <li>For the client and nodes: <code>wireguard-tools</code>, <code>iproute2</code> and <code>iptables</code>. The kernel's built-in WireGuard is used.</li>
   <li>For the disguise and bridges: <a href="https://github.com/XTLS/Xray-core">Xray</a>.</li>
   <li><code>jq</code> and <code>curl</code>, which the examples use.</li>
@@ -32,12 +32,24 @@ nav: install
 <pre><code>sudo apt update
 sudo apt install -y git wireguard-tools iproute2 iptables jq curl</code></pre>
 
-<h2 id="build">Build from source</h2>
+<h2 id="build">Download a release</h2>
+<p>Each release has ready-made programs for Linux on Intel/AMD and ARM, with checksums.</p>
+<pre><code>export VERSION={net:release}
+export ARCH=$(dpkg --print-architecture)      # amd64 or arm64
+cd /tmp
+curl -fLO {repo}/releases/download/$VERSION/smartnodes_${VERSION}_linux_${ARCH}.tar.gz
+curl -fLO {repo}/releases/download/$VERSION/SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
+mkdir -p ~/smartnodes-release
+tar -xzf smartnodes_${VERSION}_linux_${ARCH}.tar.gz -C ~/smartnodes-release --strip-components=1
+sudo install -m 0755 ~/smartnodes-release/bin/* /usr/local/bin/</code></pre>
+<p><b>Check:</b> <code>sha256sum</code> prints <code>OK</code>. The release also holds Cosmovisor and the service files (in <code>~/smartnodes-release/deploy</code>). All releases are on the <a href="{repo}/releases">releases page</a>.</p>
+<h3>Or build from source</h3>
 <pre><code>git clone {repo}.git
 cd smartnodes
 go build -o bin/ ./cmd/...
 sudo install -m 0755 bin/* /usr/local/bin/</code></pre>
-<p>This builds all five programs into <code>bin/</code> and copies them to <code>/usr/local/bin</code>. It takes a few minutes the first time, while Go downloads what the code depends on.</p>
+<p>This needs Go 1.26 or newer, and takes a few minutes the first time.</p>
 
 <h2 id="xray">Install Xray</h2>
 <p>Only needed for the disguise, bridges and probing disguised nodes. Download the Linux release for your machine from the <a href="https://github.com/XTLS/Xray-core/releases">Xray releases page</a>, check its checksum, and put the <code>xray</code> program in <code>/usr/local/bin</code>:</p>
@@ -51,9 +63,6 @@ smartvpn          # prints its commands
 smartnode -h      # prints its options</code></pre>
 
 <h2 id="update">Updating</h2>
-<pre><code>cd smartnodes
-git pull
-go build -o bin/ ./cmd/...
-sudo install -m 0755 bin/* /usr/local/bin/</code></pre>
+<p>Download the new release as above, with its version in <code>VERSION</code>. If you build from source: <code>git pull</code>, then build and install again.</p>
 <p>Restart any running node or client afterwards. While the network is in testing, an update can change the chain's rules, and the test chain may be restarted from scratch.</p>
 </article></div></div>

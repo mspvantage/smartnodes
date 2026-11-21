@@ -34,6 +34,8 @@ NETWORK = {
     "faucet": "PUBLISHED_AT_LAUNCH",
     "issuer_key_id": "0",
     "min_gas_price": "0.025usnode",
+    # The release the guides install. Tag it on GitHub before changing this.
+    "release": "v0.1.0",
 }
 
 NAV = [
