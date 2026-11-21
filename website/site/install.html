@@ -74,7 +74,7 @@ sudo apt install -y git wireguard-tools iproute2 iptables jq curl</code></pre>
 
 <h2 id="build">Download a release</h2>
 <p>Each release has ready-made programs for Linux on Intel/AMD and ARM, with checksums.</p>
-<pre><code>export VERSION=v0.1.0
+<pre><code>export VERSION=v0.2.0
 export ARCH=$(dpkg --print-architecture)      # amd64 or arm64
 cd /tmp
 curl -fLO https://github.com/mspvantage/smartnodes/releases/download/$VERSION/smartnodes_${VERSION}_linux_${ARCH}.tar.gz

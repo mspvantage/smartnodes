@@ -105,7 +105,7 @@ sudo systemctl restart systemd-journald</code></pre>
 
 <h2 id="s2">2. Install the programs</h2>
 <p>On the server, download the release, check it, and install it:</p>
-<pre><code>export VERSION=v0.1.0
+<pre><code>export VERSION=v0.2.0
 export ARCH=$(dpkg --print-architecture)      # amd64 or arm64
 cd /tmp
 curl -fLO https://github.com/mspvantage/smartnodes/releases/download/$VERSION/smartnodes_${VERSION}_linux_${ARCH}.tar.gz
@@ -123,7 +123,7 @@ sudo install -m 0755 bin/* /usr/local/bin/</code></pre>
 <pre><code>unzip Xray-linux-64.zip xray
 sudo install -m 0755 xray /usr/local/bin/xray
 xray version</code></pre>
-<p>On <b>your own computer</b>, you need only <code>smartnodesd</code>. On Linux, use the same download. On a Mac with an Apple chip, download <code>smartnodes_v0.1.0_darwin_arm64.tar.gz</code> from the <a href="https://github.com/mspvantage/smartnodes/releases">releases page</a> and copy its <code>bin/smartnodesd</code> somewhere on your path. On Windows, use it inside <a href="https://learn.microsoft.com/windows/wsl/">WSL</a>.</p>
+<p>On <b>your own computer</b>, you need only <code>smartnodesd</code>. On Linux, use the same download. On a Mac with an Apple chip, download <code>smartnodes_v0.2.0_darwin_arm64.tar.gz</code> from the <a href="https://github.com/mspvantage/smartnodes/releases">releases page</a> and copy its <code>bin/smartnodesd</code> somewhere on your path. On Windows, use it inside <a href="https://learn.microsoft.com/windows/wsl/">WSL</a>.</p>
 
 <h2 id="s3">3. Your operator key (on your computer)</h2>
 <pre><code>smartnodesd keys add operator --keyring-backend file</code></pre>

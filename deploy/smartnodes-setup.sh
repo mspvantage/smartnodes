@@ -24,7 +24,7 @@
 #   --skip-services    do not run systemctl (no systemd here, as in a container)
 set -euo pipefail
 
-VERSION_DEFAULT="v0.1.0"
+VERSION_DEFAULT="v0.2.0"
 REPO="https://github.com/mspvantage/smartnodes"
 INSTALL_DIR="/opt/smartnodes"
 
