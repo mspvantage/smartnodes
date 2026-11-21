@@ -1,0 +1,25 @@
+{
+  "_about": "Settings for the SmartNodes public test network's genesis file. Edit, then run: bash build-genesis.sh draft (and later: final). Amounts are in usnode: 1 SNODE = 1,000,000 usnode.",
+  "chain_id": "smartnodes-test-1",
+  "genesis_time": "",
+  "denom": "usnode",
+  "seeds": [],
+  "accounts": [
+    { "_who": "Faucet: gives testers test SNODE",              "address": "CHANGE", "coins": "5000000000000usnode" },
+    { "_who": "Issuer service: pays fees for posting signatures", "address": "CHANGE", "coins": "100000000usnode" }
+  ],
+  "validators": [
+    { "_who": "Invited validator: needs its own stake plus fees", "address": "CHANGE", "coins": "10000000000usnode" }
+  ],
+  "genesis_overrides": {
+    "app_state": {
+      "gov": { "params": { "voting_period": "3600s", "expedited_voting_period": "1800s", "max_deposit_period": "86400s" } },
+      "staking": { "params": { "max_validators": 30, "min_commission_rate": "0.050000000000000000", "unbonding_time": "1814400s" } },
+      "mint": {
+        "minter": { "inflation": "0.020000000000000000" },
+        "params": { "inflation_rate_change": "0.000000000000000000", "inflation_min": "0.020000000000000000", "inflation_max": "0.020000000000000000", "max_supply": "100000000000000" }
+      },
+      "distribution": { "params": { "community_tax": "0.020000000000000000" } }
+    }
+  }
+}
